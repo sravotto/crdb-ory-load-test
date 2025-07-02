@@ -64,8 +64,6 @@ type createClientRequest struct {
 	PkceEnforced bool `json:"pkce_enforced,omitempty"`
 }
 
-var grantClientCredentialsResponse map[string]interface{}
-var tokenIntrospectionResponse map[string]interface{}
 
 func CreateOAuth2Client(id, name, secret string) (bool, error) {
     var reqBody createClientRequest
@@ -86,7 +84,7 @@ func CreateOAuth2Client(id, name, secret string) (bool, error) {
 		return false, e
 	}
 
-	url := *config.AppConfig.Hydra.AdminAPI + "/admin/clients"
+	url := *config.AppConfig.Hydra.AdminAPI + "/clients"
 	client := &http.Client{Timeout: 60 * time.Second}
 
 	var resp *http.Response
@@ -160,6 +158,7 @@ func GrantClientCredentials(clientID, clientSecret string) (string, error) {
     }
 
     body, _ := io.ReadAll(resp.Body)
+    var grantClientCredentialsResponse map[string]interface{}
     ex := json.Unmarshal([]byte(body), &grantClientCredentialsResponse)
     if e != nil {
         fmt.Printf("❌ Error decoding Hydra Client Credentials grant response: %v\n", ex)
@@ -170,7 +169,7 @@ func GrantClientCredentials(clientID, clientSecret string) (string, error) {
 }
 
 func IntrospectToken(token string) (bool, error) {
-        endpoint := *config.AppConfig.Hydra.AdminAPI + "/admin/oauth2/introspect"
+        endpoint := *config.AppConfig.Hydra.AdminAPI + "/oauth2/introspect"
         data := url.Values{}
         data.Set("token", token)
 
@@ -211,6 +210,7 @@ func IntrospectToken(token string) (bool, error) {
         }
 
         body, _ := io.ReadAll(resp.Body)
+        var tokenIntrospectionResponse map[string]interface{}
         ex := json.Unmarshal([]byte(body), &tokenIntrospectionResponse)
         if ex != nil {
             fmt.Printf("❌ Error decoding Hydra Client Credentials grant response: %v\n", ex)

@@ -2,6 +2,8 @@
 .#*
 *#
 *~
+crdb-ory-load-test
+.secret
 .classpath
 .project
 .settings

@@ -4,7 +4,8 @@ import (
 	"log"
 	"sync"
 	"time"
-    "github.com/brianvoe/gofakeit/v6"
+
+	"github.com/brianvoe/gofakeit/v6"
 	"github.com/google/uuid"
 
 	"crdb-ory-load-test/internal/config"
@@ -13,10 +14,18 @@ import (
 )
 
 type clientCredentials struct {
-	ClientID         string
-	ClientSecret     string
-	AccessToken      string
+	ClientID     string
+	ClientSecret string
+	AccessToken  string
 }
+
+type adminCredentials struct {
+	ID     string
+	Secret string
+	Name   string
+}
+
+var clients []adminCredentials
 
 func RunHydraWorkload(dryRun bool) {
 	cfg := config.AppConfig.Workload
@@ -24,25 +33,28 @@ func RunHydraWorkload(dryRun bool) {
 	endTime := time.Now().Add(duration)
 	gofakeit.Seed(0)
 
-	writeWorkers := 1
+	writeWorkers := 2
 	readWorkers := cfg.ReadRatio
 	totalWorkers := writeWorkers + readWorkers
 
-    clientID := uuid.New().String()
-    clientName := "hydra-load-test-client"
-    clientSecret := gofakeit.Password(true, true, true, true, false, 26)
+	clients = make([]adminCredentials, writeWorkers)
+	for i := 0; i < writeWorkers; i++ {
+		clients[i].ID = uuid.New().String()
+		clients[i].Name = "hydra-load-test-client"
+		clients[i].Secret = gofakeit.Password(true, true, true, true, false, 26)
 
-	log.Printf("🚧 Hydra Load generation for %v with %d total workers (%d writers, %d readers)...",
-		duration, totalWorkers, writeWorkers, readWorkers)
+		log.Printf("🚧 Hydra Load generation for %v with %d total workers (%d writers, %d readers)...",
+			duration, totalWorkers, writeWorkers, readWorkers)
 
-    if !dryRun {
-        created, err := hydra.CreateOAuth2Client(clientID, clientName, clientSecret)
-        if err != nil || !created {
-            log.Printf("❌ OAuth2 client creation failed: %v", err)
-            return
-        }
-        log.Printf("🏛️ Hydra OAuth2 Client Created with ID: %s", clientID)
-    }
+		if !dryRun {
+			created, err := hydra.CreateOAuth2Client(clients[i].ID, clients[i].Name, clients[i].Secret)
+			if err != nil || !created {
+				log.Printf("❌ OAuth2 client creation failed: %v", err)
+				return
+			}
+			log.Printf("🏛️ Hydra OAuth2 Client Created with ID: %s", clients[i].ID)
+		}
+	}
 
 	var wg sync.WaitGroup
 	credentialsChannel := make(chan clientCredentials, 10000)
@@ -56,15 +68,15 @@ func RunHydraWorkload(dryRun bool) {
 			defer wg.Done()
 			for time.Now().Before(endTime) {
 				if !dryRun {
-					token, err := hydra.GrantClientCredentials(clientID, clientSecret)
+					token, err := hydra.GrantClientCredentials(clients[i].ID, clients[i].Secret)
 					if err != nil || token == "" {
 						log.Printf("❌  Client Credentials Grant failed: %v", err)
 						failedWrites++
 					} else {
-					    log.Printf("🎟️  Access Token generated for Client %s", clientID)
+						//log.Printf("🎟️  Access Token generated for Client %s %s", clients[i].ID, token)
 						// Push the same identity read_ratio times
 						for j := 0; j < cfg.ReadRatio; j++ {
-							credentialsChannel <- clientCredentials{ClientID: clientID, ClientSecret: clientSecret, AccessToken: token}
+							credentialsChannel <- clientCredentials{ClientID: clients[i].ID, ClientSecret: clients[i].Secret, AccessToken: token}
 						}
 						writeCount++
 					}
@@ -86,9 +98,9 @@ func RunHydraWorkload(dryRun bool) {
 					if !dryRun {
 						active, err = hydra.IntrospectToken(t.AccessToken)
 						if active {
-						    log.Printf("👀 Token introspection: Access Token for client %s is Active=%v", t.ClientID, active)
+							//log.Printf("👀 Token introspection: Access Token for client %s is Active=%v", t.ClientID, active)
 						} else if err != nil {
-						    failedReads++
+							failedReads++
 						}
 					}
 
@@ -96,7 +108,7 @@ func RunHydraWorkload(dryRun bool) {
 						metrics.OAuthTokenCheckCounter.WithLabelValues("active").Inc()
 						activeTokenCount++
 					}
-                    if !active && err == nil {
+					if !active && err == nil {
 						metrics.OAuthTokenCheckCounter.WithLabelValues("inactive").Inc()
 						inactiveTokenCount++
 					}
@@ -120,7 +132,7 @@ func RunHydraWorkload(dryRun bool) {
 	log.Printf("✏️  Writes:                 %d", writeCount)
 	log.Printf("👁️  Reads:                  %d", readCount)
 	if writeCount > 0 {
-	log.Printf("📊 Read/Write ratio:       %.1f:1", float64(readCount)/float64(writeCount))
+		log.Printf("📊 Read/Write ratio:       %.1f:1", float64(readCount)/float64(writeCount))
 	}
 	log.Printf("🚨 Failed writes to Hydra: %d", failedWrites)
 	log.Printf("🚨 Failed reads to Hydra:  %d", failedReads)
@@ -129,5 +141,5 @@ func RunHydraWorkload(dryRun bool) {
 		log.Println("⚠️  Dry-run mode: No tuples were written to Hydra.")
 	}
 
-    log.Println("🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧")
+	log.Println("🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧🚧")
 }
