@@ -3,19 +3,20 @@ package config
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
 	Hydra struct {
-		AdminAPI *string `yaml:"admin_api",omitempty`
-		PublicAPI  *string `yaml:"public_api",omitempty`
+		AdminAPI  *string `yaml:"admin_api",omitempty`
+		PublicAPI *string `yaml:"public_api",omitempty`
 	} `yaml:"hydra"`
 
 	Kratos struct {
-		AdminAPI *string `yaml:"admin_api",omitempty`
-		PublicAPI  *string `yaml:"public_api",omitempty`
+		AdminAPI  *string `yaml:"admin_api",omitempty`
+		PublicAPI *string `yaml:"public_api",omitempty`
 	} `yaml:"kratos"`
 
 	Keto struct {
@@ -24,9 +25,20 @@ type Config struct {
 	} `yaml:"keto"`
 
 	Workload struct {
-		ReadRatio       int `yaml:"read_ratio"`
-        DurationSec     int `yaml:"duration_sec"`
+		Readers     int `yaml:"readers"`
+		ReadRatio   int `yaml:"read_ratio"`
+		DurationSec int `yaml:"duration_sec"`
 	} `yaml:"workload"`
+}
+
+func (c Config) Readers() int {
+	return c.Workload.Readers
+}
+func (c Config) Writers() int {
+	return c.Workload.Readers / c.Workload.ReadRatio
+}
+func (c Config) Duration() time.Duration {
+	return time.Duration(c.Workload.DurationSec) * time.Second
 }
 
 var AppConfig Config

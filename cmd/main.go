@@ -1,24 +1,29 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strings"
+	"syscall"
 	"time"
 
 	"crdb-ory-load-test/cmd/generator"
 	"crdb-ory-load-test/internal/config"
 	"crdb-ory-load-test/internal/metrics"
+
+	"github.com/cockroachdb/field-eng-powertools/stopper"
 )
 
 func main() {
 	scope := flag.String("scope", "all", "Scope of Workload Simulation (valid values: hydra, kratos, keto, all)")
 	duration := flag.Int("duration-sec", 0, "Override duration in seconds")
-    readRatio := flag.Int("read-ratio", 0, "Override read/write ratio (e.g. 100 = 100:1)")
+	readRatio := flag.Int("read-ratio", 0, "Override read/write ratio (e.g. 100 = 100:1)")
 	dryRun := flag.Bool("dry-run", false, "Simulate workload without API calls")
 	workloadConfig := flag.String("workload-config", "config/config.yaml", "Path to workload config")
 	logFile := flag.String("log-file", "", "Path to log output file")
@@ -59,9 +64,9 @@ Options:
 		log.Fatalf("❌ Failed to load config: %v", err)
 	}
 
-    if *duration > 0 {
-        config.AppConfig.Workload.DurationSec = *duration
-    }
+	if *duration > 0 {
+		config.AppConfig.Workload.DurationSec = *duration
+	}
 	if *readRatio > 0 {
 		config.AppConfig.Workload.ReadRatio = *readRatio
 	}
@@ -82,35 +87,51 @@ Options:
 		log.SetOutput(io.Discard)
 	}
 
-    switch strings.ToLower(*scope) {
-        case "hydra":
-            if !*dryRun {
-                checkHydra()
-            }
-            metrics.Init("hydra")
-            generator.RunHydraWorkload(*dryRun)
-        case "kratos":
-            if !*dryRun {
-                checkKratos()
-            }
-            metrics.Init("kratos")
-            generator.RunKratosWorkload(*dryRun)
-        case "keto":
-            if !*dryRun {
-                checkKeto()
-            }
-            metrics.Init("keto")
-            generator.RunKetoWorkload(*dryRun)
-        default:
-            if !*dryRun {
-                checkHydra()
-                checkKratos()
-                checkKeto()
-            }
-            metrics.Init("all")
-            generator.RunHydraWorkload(*dryRun)
-            generator.RunKratosWorkload(*dryRun)
-            generator.RunKetoWorkload(*dryRun)
+	gracePeriod := 5 * time.Second
+	ctx := stopper.WithContext(context.Background())
+	// Stop cleanly on interrupt.
+	ctx.Go(func(stop *stopper.Context) error {
+		ctx, cancel := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
+		defer cancel()
+		select {
+		case <-ctx.Done():
+			log.Print("Interrupted")
+			stop.Stop(gracePeriod)
+		case <-stop.Stopping():
+			// Nothing to do.
+		}
+		return nil
+	})
+
+	switch strings.ToLower(*scope) {
+	case "hydra":
+		if !*dryRun {
+			checkHydra()
+		}
+		metrics.Init("hydra")
+		generator.RunHydraWorkload(ctx, *dryRun)
+	case "kratos":
+		if !*dryRun {
+			checkKratos()
+		}
+		metrics.Init("kratos")
+		generator.RunKratosWorkload(*dryRun)
+	case "keto":
+		if !*dryRun {
+			checkKeto()
+		}
+		metrics.Init("keto")
+		generator.RunKetoWorkload(*dryRun)
+	default:
+		if !*dryRun {
+			checkHydra()
+			checkKratos()
+			checkKeto()
+		}
+		metrics.Init("all")
+		generator.RunHydraWorkload(ctx, *dryRun)
+		generator.RunKratosWorkload(*dryRun)
+		generator.RunKetoWorkload(*dryRun)
 	}
 
 	if *serveMetrics {
@@ -120,21 +141,21 @@ Options:
 	}
 }
 
-func checkHydra(){
-    if config.AppConfig.Hydra.AdminAPI == nil {
-        log.Fatalf("❌ Hydra Admin Endpoint is Missing")
-        os.Exit(-1)
-    }
-    if config.AppConfig.Hydra.PublicAPI == nil {
-        log.Fatalf("❌ Hydra Public Endpoint is Missing")
-        os.Exit(-1)
-    }
+func checkHydra() {
+	if config.AppConfig.Hydra.AdminAPI == nil {
+		log.Fatalf("❌ Hydra Admin Endpoint is Missing")
+		os.Exit(-1)
+	}
+	if config.AppConfig.Hydra.PublicAPI == nil {
+		log.Fatalf("❌ Hydra Public Endpoint is Missing")
+		os.Exit(-1)
+	}
 
-    healthURL := *config.AppConfig.Hydra.AdminAPI + "/health/alive"
-    client := http.Client{Timeout: 3 * time.Second}
-    resp, err := client.Get(healthURL)
-    if err != nil || resp.StatusCode != 200 {
-        log.Fatalf(`❌ Unable to reach Ory Hydra at %s.
+	healthURL := *config.AppConfig.Hydra.AdminAPI + "/health/alive"
+	client := http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get(healthURL)
+	if err != nil || resp.StatusCode != 200 {
+		log.Fatalf(`❌ Unable to reach Ory Hydra at %s.
 
         Make sure Ory Hydra is running and reachable.
         Refer to: https://www.ory.sh/docs/hydra/install
@@ -143,24 +164,24 @@ func checkHydra(){
         - Error: %v
         - HTTP Status: %v
         `, config.AppConfig.Hydra.AdminAPI, err, resp.StatusCode)
-    }
+	}
 }
 
-func checkKratos(){
-    if config.AppConfig.Kratos.AdminAPI == nil {
-        log.Fatalf("❌ Kratos Admin Endpoint is Missing")
-        os.Exit(-1)
-    }
-    if config.AppConfig.Kratos.PublicAPI == nil {
-        log.Fatalf("❌ Kratos Public Endpoint is Missing")
-        os.Exit(-1)
-    }
+func checkKratos() {
+	if config.AppConfig.Kratos.AdminAPI == nil {
+		log.Fatalf("❌ Kratos Admin Endpoint is Missing")
+		os.Exit(-1)
+	}
+	if config.AppConfig.Kratos.PublicAPI == nil {
+		log.Fatalf("❌ Kratos Public Endpoint is Missing")
+		os.Exit(-1)
+	}
 
-    healthURL := *config.AppConfig.Kratos.AdminAPI + "/health/alive"
-    client := http.Client{Timeout: 3 * time.Second}
-    resp, err := client.Get(healthURL)
-    if err != nil || resp.StatusCode != 200 {
-        log.Fatalf(`❌ Unable to reach Ory Kratos at %s.
+	healthURL := *config.AppConfig.Kratos.AdminAPI + "/health/alive"
+	client := http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get(healthURL)
+	if err != nil || resp.StatusCode != 200 {
+		log.Fatalf(`❌ Unable to reach Ory Kratos at %s.
 
         Make sure Ory Kratos is running and reachable.
         Refer to: https://www.ory.sh/docs/kratos/install
@@ -169,24 +190,24 @@ func checkKratos(){
         - Error: %v
         - HTTP Status: %v
         `, config.AppConfig.Kratos.AdminAPI, err, resp.StatusCode)
-    }
+	}
 }
 
-func checkKeto(){
-    if config.AppConfig.Keto.ReadAPI == nil {
-        log.Fatalf("❌ Keto Read Endpoint is Missing")
-        os.Exit(-1)
-    }
-    if config.AppConfig.Keto.WriteAPI == nil {
-        log.Fatalf("❌ Keto Write Endpoint is Missing")
-        os.Exit(-1)
-    }
+func checkKeto() {
+	if config.AppConfig.Keto.ReadAPI == nil {
+		log.Fatalf("❌ Keto Read Endpoint is Missing")
+		os.Exit(-1)
+	}
+	if config.AppConfig.Keto.WriteAPI == nil {
+		log.Fatalf("❌ Keto Write Endpoint is Missing")
+		os.Exit(-1)
+	}
 
-    healthURL := *config.AppConfig.Keto.ReadAPI + "/health/alive"
-    client := http.Client{Timeout: 3 * time.Second}
-    resp, err := client.Get(healthURL)
-    if err != nil || resp.StatusCode != 200 {
-        log.Fatalf(`❌ Unable to reach Ory Keto at %s.
+	healthURL := *config.AppConfig.Keto.ReadAPI + "/health/alive"
+	client := http.Client{Timeout: 3 * time.Second}
+	resp, err := client.Get(healthURL)
+	if err != nil || resp.StatusCode != 200 {
+		log.Fatalf(`❌ Unable to reach Ory Keto at %s.
 
         Make sure Ory Keto is running and reachable.
         Refer to: https://www.ory.sh/docs/keto/install
@@ -195,5 +216,5 @@ func checkKeto(){
         - Error: %v
         - HTTP Status: %v
         `, config.AppConfig.Keto.ReadAPI, err, resp.StatusCode)
-    }
+	}
 }
