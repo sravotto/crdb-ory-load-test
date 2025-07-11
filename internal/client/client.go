@@ -1,4 +1,4 @@
-package poster
+package client
 
 import (
 	"bytes"
@@ -12,6 +12,8 @@ import (
 
 	"github.com/cockroachdb/field-eng-powertools/stopper"
 )
+
+const healthURL = "health/alive"
 
 type Client struct {
 	client *http.Client
@@ -33,6 +35,22 @@ func New(root string) *Client {
 		root: root,
 	}
 }
+
+func (c *Client) HealthCheck(ctx *stopper.Context) error {
+	endpoint, err := url.JoinPath(c.root, healthURL)
+	if err != nil {
+		return errors.Wrapf(err, "endpoint is invalid %s", endpoint)
+	}
+	resp, err := c.client.Get(endpoint)
+	if err != nil {
+		return errors.Wrapf(err, "health check failed %s", endpoint)
+	}
+	if statusOK(resp) {
+		return nil
+	}
+	return errors.Newf("healthC check failed with error code %s", resp.Status)
+}
+
 func (c *Client) PostForm(ctx *stopper.Context, path string, data url.Values) ([]byte, error) {
 	return c.Post(
 		ctx,
@@ -63,6 +81,8 @@ func (c *Client) Post(ctx *stopper.Context, path string, headers map[string]stri
 		req.Header.Set(k, v)
 	}
 	var resp *http.Response
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
 	for attempt := 1; attempt <= 3; attempt++ {
 		resp, err = c.client.Do(req)
 		if err == nil && statusOK(resp) {
@@ -74,7 +94,12 @@ func (c *Client) Post(ctx *stopper.Context, path string, headers map[string]stri
 			} else {
 				log.Printf("retrying request %s %s", endpoint, resp.Status)
 			}
-			time.Sleep(100 * time.Millisecond)
+			select {
+			case <-ctx.Stopping():
+				return nil, ctx.Err()
+			case <-ticker.C:
+
+			}
 		}
 	}
 	if err != nil {

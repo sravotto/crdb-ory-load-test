@@ -5,23 +5,25 @@ import (
 	"os"
 	"time"
 
+	"github.com/cockroachdb/errors"
+
 	"gopkg.in/yaml.v3"
 )
 
 type Config struct {
 	Hydra struct {
-		AdminAPI  *string `yaml:"admin_api",omitempty`
-		PublicAPI *string `yaml:"public_api",omitempty`
+		AdminAPI  string `yaml:"admin_api",omitempty`
+		PublicAPI string `yaml:"public_api",omitempty`
 	} `yaml:"hydra"`
 
 	Kratos struct {
-		AdminAPI  *string `yaml:"admin_api",omitempty`
-		PublicAPI *string `yaml:"public_api",omitempty`
+		AdminAPI  string `yaml:"admin_api",omitempty`
+		PublicAPI string `yaml:"public_api",omitempty`
 	} `yaml:"kratos"`
 
 	Keto struct {
-		WriteAPI *string `yaml:"write_api",omitempty`
-		ReadAPI  *string `yaml:"read_api",omitempty`
+		WriteAPI string `yaml:"write_api",omitempty`
+		ReadAPI  string `yaml:"read_api",omitempty`
 	} `yaml:"keto"`
 
 	Workload struct {
@@ -31,6 +33,15 @@ type Config struct {
 	} `yaml:"workload"`
 }
 
+func (c Config) CheckHydra() error {
+	if c.Hydra.AdminAPI == "" {
+		return errors.New("hydra AdminAPI is not defined")
+	}
+	if c.Hydra.AdminAPI == "" {
+		return errors.New("hydra AdminAPI is not defined")
+	}
+	return nil
+}
 func (c Config) Readers() int {
 	return c.Workload.Readers
 }
@@ -52,6 +63,6 @@ func LoadConfig(path string) error {
 	if err := yaml.Unmarshal(data, &AppConfig); err != nil {
 		return fmt.Errorf("failed to unmarshal config: %w", err)
 	}
-
+	fmt.Println(AppConfig)
 	return nil
 }

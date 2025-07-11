@@ -1,8 +1,8 @@
 package hydra
 
 import (
+	"crdb-ory-load-test/internal/client"
 	"crdb-ory-load-test/internal/config"
-	"crdb-ory-load-test/internal/poster"
 	"encoding/json"
 
 	"net/url"
@@ -64,22 +64,23 @@ type createClientRequest struct {
 }
 
 type Hydra struct {
-	admin  *poster.Client
-	public *poster.Client
+	admin  *client.Client
+	public *client.Client
 }
 
 func New() *Hydra {
 	return &Hydra{
-		admin:  poster.New(*config.AppConfig.Hydra.AdminAPI),
-		public: poster.New(*config.AppConfig.Hydra.PublicAPI),
+		admin:  client.New(config.AppConfig.Hydra.AdminAPI),
+		public: client.New(config.AppConfig.Hydra.PublicAPI),
 	}
 }
-func (h *Hydra) CreateOAuth2Client(ctx *stopper.Context, id, name, secret string) (bool, error) {
+
+func (h *Hydra) CreateOAuth2Client(ctx *stopper.Context, w *Writer) (bool, error) {
 	var reqBody createClientRequest
 	reqBody.AccessTokenStrategy = "jwt"
-	reqBody.ClientID = id
-	reqBody.ClientName = name
-	reqBody.ClientSecret = secret
+	reqBody.ClientID = w.ID
+	reqBody.ClientName = w.Name
+	reqBody.ClientSecret = w.Secret
 	reqBody.ClientSecretExpiresAt = 0
 	reqBody.GrantTypes = []string{"client_credentials"}
 	reqBody.ResponseTypes = []string{"code"}
@@ -108,6 +109,16 @@ func (h *Hydra) GrantClientCredentials(ctx *stopper.Context, clientID, clientSec
 		return "", errors.Wrap(err, "invalid credential")
 	}
 	return grantClientCredentialsResponse["access_token"].(string), nil
+}
+
+func (h *Hydra) HealthCheck(ctx *stopper.Context) error {
+	if err := h.admin.HealthCheck(ctx); err != nil {
+		return err
+	}
+	if err := h.public.HealthCheck(ctx); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (h *Hydra) IntrospectToken(ctx *stopper.Context, token string) (bool, error) {

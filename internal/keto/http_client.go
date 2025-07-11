@@ -3,11 +3,11 @@ package keto
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"time"
-	"errors"
 
 	"crdb-ory-load-test/internal/config"
 )
@@ -44,7 +44,7 @@ func CheckPermission(namespace, object, relation, subjectID string) (bool, error
 		return false, err
 	}
 
-	url := *config.AppConfig.Keto.ReadAPI + "/relation-tuples/check"
+	url := config.AppConfig.Keto.ReadAPI + "/relation-tuples/check"
 	client := &http.Client{Timeout: 5 * time.Second}
 
 	var resp *http.Response
@@ -93,7 +93,7 @@ func WriteTuple(namespace, object, relation, subjectID string) error {
 		return fmt.Errorf("failed to marshal tuple: %w", err)
 	}
 
-	url := *config.AppConfig.Keto.WriteAPI + "/admin/relation-tuples"
+	url := config.AppConfig.Keto.WriteAPI + "/admin/relation-tuples"
 	req, err := http.NewRequest(http.MethodPut, url, bytes.NewBuffer(jsonData))
 	if err != nil {
 		return fmt.Errorf("failed to build request: %w", err)
@@ -112,7 +112,7 @@ func WriteTuple(namespace, object, relation, subjectID string) error {
 		return fmt.Errorf("PUT failed: status=%v body=%s", resp.StatusCode, string(body))
 	}
 
-    fmt.Printf("🔑  Permission %s granted to %s for object %s\n", tuple.Relation, tuple.SubjectID, tuple.Object)
+	fmt.Printf("🔑  Permission %s granted to %s for object %s\n", tuple.Relation, tuple.SubjectID, tuple.Object)
 	return nil
 }
 
