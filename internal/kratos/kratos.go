@@ -5,6 +5,7 @@ import (
 	"crdb-ory-load-test/internal/config"
 	"encoding/json"
 	"fmt"
+	"log"
 	"time"
 
 	"github.com/pkg/errors"
@@ -73,13 +74,13 @@ type Kratos struct {
 
 func New(config *config.Config) *Kratos {
 	return &Kratos{
-		admin:  client.New(config.Keto.ReadAPI),
-		public: client.New(config.Keto.WriteAPI),
+		admin:  client.New(config.Kratos.AdminAPI),
+		public: client.New(config.Kratos.PublicAPI),
 	}
 }
 
 func (k *Kratos) CheckIdentity(ctx *stopper.Context, email string) (bool, error) {
-	body, err := k.admin.Get(ctx, "/admin/identities?email="+email)
+	body, err := k.admin.Get(ctx, "identities", "email="+email)
 	if err != nil {
 		return false, errors.Wrap(err, "request to relation-tuples/check failed")
 	}
@@ -105,17 +106,16 @@ func (k *Kratos) HealthCheck(ctx *stopper.Context) error {
 	return nil
 }
 
-func (k *Kratos) RegisterIdentity(ctx *stopper.Context, email, firstName, lastName, password string) (bool, error) {
+func (k *Kratos) RegisterIdentity(ctx *stopper.Context, identity *Identity, password string) error {
 	var err error
 	regFlowId, err := k.createRegistrationFlow(ctx)
-	if err != nil || regFlowId == "" {
-		return false, err
+	if err != nil {
+		return err
 	}
-	created, err := k.registrationIdentity(ctx, regFlowId, email, firstName, lastName, password)
-	if err != nil || !created {
-		return false, err
+	if regFlowId == "" {
+		return errors.New("registration flow failed")
 	}
-	return created, nil
+	return k.registrationIdentity(ctx, regFlowId, identity, password)
 }
 
 func (k *Kratos) createRegistrationFlow(ctx *stopper.Context) (string, error) {
@@ -123,35 +123,35 @@ func (k *Kratos) createRegistrationFlow(ctx *stopper.Context) (string, error) {
 	if err != nil {
 		return "", errors.Wrap(err, "request to relation-tuples/check failed")
 	}
-	var registrationFlowResponse map[string]interface{}
+	var registrationFlowResponse map[string]any
 	if err := json.Unmarshal(body, &registrationFlowResponse); err != nil {
-		fmt.Printf("Error decoding Kratos registration flow response: %v\n", err)
+		log.Printf("Error decoding Kratos registration flow response: %v\n", err)
 		return "", err
 	}
 	return registrationFlowResponse["id"].(string), nil
 }
 
-func (k *Kratos) registrationIdentity(ctx *stopper.Context, flowID, email, firstName, lastName, password string) (bool, error) {
+func (k *Kratos) registrationIdentity(ctx *stopper.Context, flowID string, identity *Identity, password string) error {
 	var reqBody RegistrationRequest
 	reqBody.Method = "password"
 	reqBody.Password = password
-	reqBody.Traits.Email = email
-	reqBody.Traits.Name.First = firstName
-	reqBody.Traits.Name.Last = lastName
+	reqBody.Traits.Email = identity.Email
+	reqBody.Traits.Name.First = identity.FirstName
+	reqBody.Traits.Name.Last = identity.LastName
 
 	jsonData, err := json.Marshal(reqBody)
 	if err != nil {
-		fmt.Printf("Error marshaling registration request: %v\n", err)
-		return false, err
+		log.Printf("Error marshaling registration request: %v\n", err)
+		return err
 	}
-	body, err := k.public.PostJson(ctx, "self-service/registration/api", jsonData)
+	body, err := k.public.PostJson(ctx, "self-service/registration", jsonData, "flow="+flowID)
 	if err != nil {
-		return false, errors.Wrap(err, "request to relation-tuples/check failed")
+		return errors.Wrap(err, "request to relation-tuples/check failed")
 	}
-	var registrationResponse RegistrationResponse
+	var registrationResponse map[string]any
 	if err := json.Unmarshal(body, &registrationResponse); err != nil {
-		fmt.Printf("Error decoding Kratos registration response: %v\n", err)
-		return false, err
+		log.Printf("Error decoding Kratos registration response: %v\n", err)
+		return err
 	}
-	return true, nil
+	return nil
 }

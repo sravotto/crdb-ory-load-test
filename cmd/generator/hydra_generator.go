@@ -36,6 +36,7 @@ func RunHydraWorkload(ctx *stopper.Context, cfg *config.Config) error {
 	credentialsChannel := make(chan hydra.Credentials, 100)
 	defer close(credentialsChannel)
 	readerObs := &observer.Observer{
+		Name:     "hydra-reads",
 		Delegate: metrics.OryLatencyHistogram.WithLabelValues("hydra", "read"),
 	}
 	consumerPool := process.ConsumerPool[hydra.Credentials]{
@@ -46,6 +47,7 @@ func RunHydraWorkload(ctx *stopper.Context, cfg *config.Config) error {
 	}
 	consumerPool.Start(ctx, &wg, credentialsChannel)
 	writerObs := &observer.Observer{
+		Name:     "hydra-writes",
 		Delegate: metrics.OryLatencyHistogram.WithLabelValues("hydra", "write"),
 	}
 	producerPool := process.ProducerPool[hydra.Credentials]{
@@ -54,6 +56,7 @@ func RunHydraWorkload(ctx *stopper.Context, cfg *config.Config) error {
 		Duration:  cfg.Duration(),
 	}
 	start := time.Now()
+	printProgress(ctx, []*observer.Observer{readerObs, writerObs})
 	producerPool.Start(ctx, &wg, credentialsChannel)
 	wg.Wait()
 	printSummary(cfg, start, readerObs, writerObs)

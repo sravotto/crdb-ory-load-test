@@ -39,6 +39,7 @@ func RunKetoWorkload(ctx *stopper.Context, cfg *config.Config) error {
 	tupleChannel := make(chan *keto.RelationTuple, 100)
 	defer close(tupleChannel)
 	readerObs := &observer.Observer{
+		Name:     "keto-reads",
 		Delegate: metrics.OryLatencyHistogram.WithLabelValues("keto", "read"),
 	}
 	consumerPool := process.ConsumerPool[*keto.RelationTuple]{
@@ -49,6 +50,7 @@ func RunKetoWorkload(ctx *stopper.Context, cfg *config.Config) error {
 	}
 	consumerPool.Start(ctx, &wg, tupleChannel)
 	writerObs := &observer.Observer{
+		Name:     "keto-writes",
 		Delegate: metrics.OryLatencyHistogram.WithLabelValues("keto", "write"),
 	}
 	producerPool := process.ProducerPool[*keto.RelationTuple]{
@@ -57,6 +59,7 @@ func RunKetoWorkload(ctx *stopper.Context, cfg *config.Config) error {
 		Duration:  cfg.Duration(),
 	}
 	start := time.Now()
+	printProgress(ctx, []*observer.Observer{readerObs, writerObs})
 	producerPool.Start(ctx, &wg, tupleChannel)
 	wg.Wait()
 	printSummary(cfg, start, readerObs, writerObs)

@@ -36,56 +36,21 @@ func New(root string) *Client {
 	}
 }
 
-func (c *Client) Get(ctx *stopper.Context, path string) ([]byte, error) {
-	endpoint, err := url.JoinPath(c.root, path)
-	if err != nil {
-		return nil, errors.Wrap(err, "endpoint is invalid")
-	}
-	var resp *http.Response
-	ticker := time.NewTicker(100 * time.Millisecond)
-	defer ticker.Stop()
-	for attempt := 1; attempt <= 3; attempt++ {
-		resp, err = c.client.Get(endpoint)
-		if err == nil && statusOK(resp) {
-			break
-		}
-		if attempt < 3 {
-			if err != nil {
-				log.Printf("retrying request %s %s", endpoint, err.Error())
-			} else {
-				log.Printf("retrying request %s %s", endpoint, resp.Status)
-			}
-			select {
-			case <-ctx.Stopping():
-				return nil, ctx.Err()
-			case <-ticker.C:
-
-			}
-		}
-	}
-	if err != nil {
-		return nil, errors.Wrap(err, "request failed")
-	}
-	if !statusOK(resp) {
-		return nil, errors.Newf("request failed with status code %d", resp.StatusCode)
-	}
-	defer resp.Body.Close()
-	return io.ReadAll(resp.Body)
+// Get calls http get on the specified endpoint. Params should be in the form of "param=value"
+func (c *Client) Get(ctx *stopper.Context, path string, params ...string) ([]byte, error) {
+	return c.submit(
+		ctx,
+		http.MethodGet,
+		path,
+		map[string]string{},
+		[]byte{},
+		params...,
+	)
 }
 
 func (c *Client) HealthCheck(ctx *stopper.Context) error {
-	endpoint, err := url.JoinPath(c.root, healthURL)
-	if err != nil {
-		return errors.Wrapf(err, "endpoint is invalid %s", endpoint)
-	}
-	resp, err := c.client.Get(endpoint)
-	if err != nil {
-		return errors.Wrapf(err, "health check failed %s", endpoint)
-	}
-	if statusOK(resp) {
-		return nil
-	}
-	return errors.Newf("healthC check failed with error code %s", resp.Status)
+	_, err := c.Get(ctx, healthURL)
+	return err
 }
 
 func (c *Client) PostForm(ctx *stopper.Context, path string, data url.Values) ([]byte, error) {
@@ -98,29 +63,46 @@ func (c *Client) PostForm(ctx *stopper.Context, path string, data url.Values) ([
 	)
 }
 
-func (c *Client) PostJson(ctx *stopper.Context, path string, data []byte) ([]byte, error) {
+func (c *Client) PostJson(ctx *stopper.Context, path string, data []byte, params ...string) ([]byte, error) {
 	return c.submit(
 		ctx,
 		http.MethodPost,
 		path,
 		map[string]string{"Content-Type": "application/json"},
 		data,
+		params...,
 	)
 }
 
-func (c *Client) PutJson(ctx *stopper.Context, path string, data []byte) ([]byte, error) {
+func (c *Client) PutJson(ctx *stopper.Context, path string, data []byte, params ...string) ([]byte, error) {
 	return c.submit(
 		ctx,
 		http.MethodPut,
 		path,
 		map[string]string{"Content-Type": "application/json"},
 		data,
+		params...,
 	)
 }
-func (c *Client) submit(ctx *stopper.Context, method string, path string, headers map[string]string, data []byte) ([]byte, error) {
+
+func (c *Client) submit(
+	ctx *stopper.Context,
+	method string,
+	path string,
+	headers map[string]string,
+	data []byte,
+	params ...string,
+) ([]byte, error) {
 	endpoint, err := url.JoinPath(c.root, path)
 	if err != nil {
 		return nil, errors.Wrap(err, "endpoint is invalid")
+	}
+	for idx, param := range params {
+		sep := "&"
+		if idx == 0 {
+			sep = "?"
+		}
+		endpoint = endpoint + sep + param
 	}
 	req, err := http.NewRequestWithContext(ctx, method, endpoint, bytes.NewBuffer(data))
 	if err != nil {

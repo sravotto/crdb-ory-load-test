@@ -66,7 +66,6 @@ func BuildWriters(
 		if err != nil || !created {
 			return nil, errors.Join(err, errors.New("failed to create writer"))
 		}
-		log.Printf("Hydra OAuth2 Client Created with ID: %s", writer.Name)
 	}
 	return writers, nil
 }

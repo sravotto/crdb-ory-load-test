@@ -2,7 +2,6 @@ package process
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -38,7 +37,6 @@ func (p *ProducerPool[T]) Start(ctx *stopper.Context, wg *sync.WaitGroup, data c
 				select {
 				case data <- item:
 				case <-ticker.C:
-					log.Printf("done %s", producer)
 					return nil
 				case <-ctx.Stopping():
 					return ctx.Err()

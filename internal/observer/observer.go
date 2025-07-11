@@ -8,6 +8,7 @@ import (
 
 type Observer struct {
 	Delegate prometheus.Observer
+	Name     string
 	mu       struct {
 		sync.Mutex
 		counter int

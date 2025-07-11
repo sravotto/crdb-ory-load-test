@@ -2,7 +2,6 @@ package process
 
 import (
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
@@ -42,7 +41,6 @@ func (c *ConsumerPool[T]) Start(ctx *stopper.Context, wg *sync.WaitGroup, data <
 						c.Observer.Observe(float64(time.Since(start).Seconds()))
 					}
 				case <-ticker.C:
-					log.Printf("done %s", consumer)
 					return nil
 				case <-ctx.Stopping():
 					return ctx.Err()
