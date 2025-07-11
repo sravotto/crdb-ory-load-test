@@ -62,10 +62,10 @@ func Init() {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
-	http.Handle("/metrics", promhttp.Handler())
+	http.Handle("/", promhttp.Handler())
 	go func() {
-		log.Println("Starting metrics HTTP server on :2112")
-		if err := http.ListenAndServe("0.0.0.0:2112", nil); err != nil {
+		log.Println("Starting metrics HTTP server on :26260")
+		if err := http.ListenAndServe("0.0.0.0:26260", nil); err != nil {
 			log.Fatalf("Metrics server failed: %v", err)
 		}
 	}()

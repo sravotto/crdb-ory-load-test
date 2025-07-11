@@ -1,6 +1,13 @@
 hydra:
   admin_api: "http://localhost:5445"
   public_api: "http://localhost:5444"
+keto:
+  read_api: "http://localhost:4466"
+  write_api: "http://localhost:4467"
+kratos:
+  admin_api: "http://localhost:4434"
+  public_api: "http://localhost:4433"  
 workload:
-  read_ratio: 100             # 💡 For every write, do ~100 reads i.e. number of reads per write
+  readers: 10 
+  read_ratio: 2             # 💡 For every write, do ~100 reads i.e. number of reads per write
   duration_sec: 60            # 💡 Run for 60 seconds, set to 0 to run indefinitely
