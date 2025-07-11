@@ -36,6 +36,44 @@ func New(root string) *Client {
 	}
 }
 
+func (c *Client) Get(ctx *stopper.Context, path string) ([]byte, error) {
+	endpoint, err := url.JoinPath(c.root, path)
+	if err != nil {
+		return nil, errors.Wrap(err, "endpoint is invalid")
+	}
+
+	var resp *http.Response
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for attempt := 1; attempt <= 3; attempt++ {
+		resp, err = c.client.Get(endpoint)
+		if err == nil && statusOK(resp) {
+			break
+		}
+		if attempt < 3 {
+			if err != nil {
+				log.Printf("retrying request %s %s", endpoint, err.Error())
+			} else {
+				log.Printf("retrying request %s %s", endpoint, resp.Status)
+			}
+			select {
+			case <-ctx.Stopping():
+				return nil, ctx.Err()
+			case <-ticker.C:
+
+			}
+		}
+	}
+	if err != nil {
+		return nil, errors.Wrap(err, "request failed")
+	}
+	if !statusOK(resp) {
+		return nil, errors.Newf("request failed with status code %d", resp.StatusCode)
+	}
+	defer resp.Body.Close()
+	return io.ReadAll(resp.Body)
+}
+
 func (c *Client) HealthCheck(ctx *stopper.Context) error {
 	endpoint, err := url.JoinPath(c.root, healthURL)
 	if err != nil {
@@ -68,6 +106,7 @@ func (c *Client) PostJson(ctx *stopper.Context, path string, data []byte) ([]byt
 		data,
 	)
 }
+
 func (c *Client) Post(ctx *stopper.Context, path string, headers map[string]string, data []byte) ([]byte, error) {
 	endpoint, err := url.JoinPath(c.root, path)
 	if err != nil {

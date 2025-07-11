@@ -17,20 +17,22 @@ import (
 	"crdb-ory-load-test/internal/observer"
 )
 
-func RunHydraWorkload(ctx *stopper.Context) error {
-	cfg := config.AppConfig
+func RunHydraWorkload(ctx *stopper.Context, cfg *config.Config) error {
 	duration := cfg.Duration()
 	gofakeit.Seed(0)
 
-	client := hydra.New()
+	client := hydra.New(cfg)
 
+	if err := cfg.CheckHydra(); err != nil {
+		return err
+	}
 	if err := client.HealthCheck(ctx); err != nil {
 		return err
 	}
 
 	log.Printf("Hydra Load generation for %v with %d writers, %d readers, %d ratio",
 		duration, cfg.Writers(), cfg.Readers(), cfg.Workload.ReadRatio)
-	writers := make([]process.Producer[hydra.Credentials], config.AppConfig.Writers())
+	writers := make([]process.Producer[hydra.Credentials], cfg.Writers())
 	for idx := range writers {
 		writer := &hydra.Writer{
 			Client: client,

@@ -51,35 +51,18 @@ var (
 	)
 )
 
-func Init(scope string) {
-
-	switch scope {
-	case "hydra":
-		// Metrics from Hydra
-		prometheus.MustRegister(ErrorCounter)
-		prometheus.MustRegister(OAuthTokenCheckCounter)
-		prometheus.MustRegister(OAuthTokenCheckHistogram)
-	case "kratos":
-		// Metrics from Kratos
-		prometheus.MustRegister(IdentityCheckCounter)
-	case "keto":
-		// Metrics from Keto
-		prometheus.MustRegister(PermissionCheckCounter)
-	default:
-		// Metrics from all
-		prometheus.MustRegister(OAuthTokenCheckCounter)
-		prometheus.MustRegister(IdentityCheckCounter)
-		prometheus.MustRegister(PermissionCheckCounter)
-	}
-
+func Init() {
+	prometheus.MustRegister(ErrorCounter)
+	prometheus.MustRegister(OAuthTokenCheckHistogram)
+	prometheus.MustRegister(OAuthTokenCheckCounter)
+	prometheus.MustRegister(IdentityCheckCounter)
+	prometheus.MustRegister(PermissionCheckCounter)
 	// Health and metrics endpoints
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
 	})
-
 	http.Handle("/metrics", promhttp.Handler())
-
 	go func() {
 		log.Println("Starting metrics HTTP server on :2112")
 		if err := http.ListenAndServe("0.0.0.0:2112", nil); err != nil {

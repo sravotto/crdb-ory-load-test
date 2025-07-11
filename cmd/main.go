@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"log"
-	"net/http"
 	"os"
 	"os/signal"
 	"strings"
@@ -57,21 +56,22 @@ See install docs: https://github.com/amineelkouhen/crdb-ory-sandbox/?tab=readme-
 		os.Exit(0)
 	}
 
-	if err := config.LoadConfig(*workloadConfig); err != nil {
-		log.Fatalf("❌ Failed to load config: %v", err)
+	config, err := config.LoadConfig(*workloadConfig)
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
 	}
 
 	if *duration > 0 {
-		config.AppConfig.Workload.DurationSec = *duration
+		config.Workload.DurationSec = *duration
 	}
 	if *readRatio > 0 {
-		config.AppConfig.Workload.ReadRatio = *readRatio
+		config.Workload.ReadRatio = *readRatio
 	}
 
 	if *logFile != "" {
 		f, err := os.Create(*logFile)
 		if err != nil {
-			log.Fatalf("❌ Failed to create log file: %v", err)
+			log.Fatalf("Failed to create log file: %v", err)
 		}
 		defer f.Close()
 
@@ -99,74 +99,18 @@ See install docs: https://github.com/amineelkouhen/crdb-ory-sandbox/?tab=readme-
 		}
 		return nil
 	})
-	var err error
+	metrics.Init()
 	switch strings.ToLower(*scope) {
 	case "hydra":
-		err = generator.RunHydraWorkload(ctx)
+		err = generator.RunHydraWorkload(ctx, config)
 	case "kratos":
-		checkKratos()
-		metrics.Init("kratos")
-		generator.RunKratosWorkload(false)
+		err = generator.RunKratosWorkload(ctx, config)
 	case "keto":
-		checkKeto()
-		metrics.Init("keto")
-		generator.RunKetoWorkload(false)
+		err = generator.RunKetoWorkload(ctx, config)
 	default:
 		panic("scope not implemented")
 	}
 	if err != nil {
 		log.Fatalf("workload failed %s", err)
-	}
-}
-
-func checkKratos() {
-	if config.AppConfig.Kratos.AdminAPI == "" {
-		log.Fatalf("❌ Kratos Admin Endpoint is Missing")
-		os.Exit(-1)
-	}
-	if config.AppConfig.Kratos.PublicAPI == "" {
-		log.Fatalf("❌ Kratos Public Endpoint is Missing")
-		os.Exit(-1)
-	}
-
-	healthURL := config.AppConfig.Kratos.AdminAPI + "/health/alive"
-	client := http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Get(healthURL)
-	if err != nil || resp.StatusCode != 200 {
-		log.Fatalf(`❌ Unable to reach Ory Kratos at %s.
-
-        Make sure Ory Kratos is running and reachable.
-        Refer to: https://www.ory.sh/docs/kratos/install
-
-        Details:
-        - Error: %v
-        - HTTP Status: %v
-        `, config.AppConfig.Kratos.AdminAPI, err, resp.StatusCode)
-	}
-}
-
-func checkKeto() {
-	if config.AppConfig.Keto.ReadAPI == "" {
-		log.Fatalf("❌ Keto Read Endpoint is Missing")
-		os.Exit(-1)
-	}
-	if config.AppConfig.Keto.WriteAPI == "" {
-		log.Fatalf("❌ Keto Write Endpoint is Missing")
-		os.Exit(-1)
-	}
-
-	healthURL := config.AppConfig.Keto.ReadAPI + "/health/alive"
-	client := http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Get(healthURL)
-	if err != nil || resp.StatusCode != 200 {
-		log.Fatalf(`❌ Unable to reach Ory Keto at %s.
-
-        Make sure Ory Keto is running and reachable.
-        Refer to: https://www.ory.sh/docs/keto/install
-
-        Details:
-        - Error: %v
-        - HTTP Status: %v
-        `, config.AppConfig.Keto.ReadAPI, err, resp.StatusCode)
 	}
 }

@@ -19,7 +19,7 @@ type Writer struct {
 var _ process.Producer[Credentials] = &Writer{}
 
 func (w *Writer) Produce(ctx *stopper.Context) (Credentials, error) {
-	ticker := time.NewTicker(defaultTimeout)
+	ticker := time.NewTicker(defaultDelay)
 	defer ticker.Stop()
 	for {
 		token, err := w.Client.GrantClientCredentials(ctx, w.ID, w.Secret)

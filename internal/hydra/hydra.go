@@ -68,10 +68,10 @@ type Hydra struct {
 	public *client.Client
 }
 
-func New() *Hydra {
+func New(config *config.Config) *Hydra {
 	return &Hydra{
-		admin:  client.New(config.AppConfig.Hydra.AdminAPI),
-		public: client.New(config.AppConfig.Hydra.PublicAPI),
+		admin:  client.New(config.Hydra.AdminAPI),
+		public: client.New(config.Hydra.PublicAPI),
 	}
 }
 
@@ -129,8 +129,8 @@ func (h *Hydra) IntrospectToken(ctx *stopper.Context, token string) (bool, error
 		return false, errors.Wrap(err, "request to oauth2/introspect failed")
 	}
 	var tokenIntrospectionResponse map[string]interface{}
-	ex := json.Unmarshal(body, &tokenIntrospectionResponse)
-	if ex != nil {
+	err = json.Unmarshal(body, &tokenIntrospectionResponse)
+	if err != nil {
 		return false, errors.Wrap(err, "invalid token")
 	}
 	return tokenIntrospectionResponse["active"].(bool), nil

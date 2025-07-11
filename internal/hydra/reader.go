@@ -17,12 +17,11 @@ type Reader struct {
 var _ process.Consumer[Credentials] = &Reader{}
 
 func (r *Reader) Consume(ctx *stopper.Context, c Credentials) error {
-	active := false
-	var err error
-	active, err = r.Client.IntrospectToken(ctx, c.AccessToken)
+	active, err := r.Client.IntrospectToken(ctx, c.AccessToken)
 	if err != nil {
 		log.Printf("error calling hydra %s", err)
 		metrics.ErrorCounter.WithLabelValues("hydra", "introspect", r.Name).Inc()
+		return err
 	}
 	if active {
 		r.Active++
