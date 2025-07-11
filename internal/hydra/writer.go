@@ -2,11 +2,15 @@ package hydra
 
 import (
 	"crdb-ory-load-test/cmd/process"
+	"crdb-ory-load-test/internal/config"
 	"crdb-ory-load-test/internal/metrics"
+	"errors"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/cockroachdb/field-eng-powertools/stopper"
+	"github.com/google/uuid"
 )
 
 type Writer struct {
@@ -42,4 +46,27 @@ func (w *Writer) Produce(ctx *stopper.Context) (Credentials, error) {
 
 func (w *Writer) String() string {
 	return w.Name
+}
+
+func BuildWriters(
+	ctx *stopper.Context,
+	cfg *config.Config,
+	client *Hydra,
+) ([]process.Producer[Credentials], error) {
+	writers := make([]process.Producer[Credentials], cfg.Writers())
+	for idx := range writers {
+		writer := &Writer{
+			Client: client,
+			ID:     uuid.New().String(),
+			Secret: uuid.New().String(),
+			Name:   fmt.Sprintf("hydra-load-test-client-%d", idx),
+		}
+		writers[idx] = writer
+		created, err := client.CreateOAuth2Client(ctx, writer)
+		if err != nil || !created {
+			return nil, errors.Join(err, errors.New("failed to create writer"))
+		}
+		log.Printf("Hydra OAuth2 Client Created with ID: %s", writer.Name)
+	}
+	return writers, nil
 }

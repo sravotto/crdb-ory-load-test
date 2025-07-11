@@ -20,7 +20,7 @@ import (
 )
 
 func main() {
-	scope := flag.String("scope", "all", "Scope of Workload Simulation (valid values: hydra, kratos, keto, all)")
+	scope := flag.String("scope", "hydra", "Scope of Workload Simulation (valid values: hydra, kratos, keto)")
 	duration := flag.Int("duration-sec", 0, "Override duration in seconds")
 	readRatio := flag.Int("read-ratio", 0, "Override read/write ratio (e.g. 100 = 100:1)")
 	workloadConfig := flag.String("workload-config", "config/config.yaml", "Path to workload config")
@@ -29,7 +29,7 @@ func main() {
 
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), `
-📦 crdb-ory-load-test: Workload simulator for Ory + CockroachDB
+crdb-ory-load-test: Workload simulator for Ory + CockroachDB
 
 Usage:
   ./crdb-ory-load-test [flags]
@@ -108,7 +108,7 @@ See install docs: https://github.com/amineelkouhen/crdb-ory-sandbox/?tab=readme-
 	case "keto":
 		err = generator.RunKetoWorkload(ctx, config)
 	default:
-		panic("scope not implemented")
+		log.Fatal("scope not implemented")
 	}
 	if err != nil {
 		log.Fatalf("workload failed %s", err)

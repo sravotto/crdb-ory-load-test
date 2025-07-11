@@ -2,7 +2,9 @@ package hydra
 
 import (
 	"crdb-ory-load-test/cmd/process"
+	"crdb-ory-load-test/internal/config"
 	"crdb-ory-load-test/internal/metrics"
+	"fmt"
 	"log"
 
 	"github.com/cockroachdb/field-eng-powertools/stopper"
@@ -35,4 +37,15 @@ func (r *Reader) Consume(ctx *stopper.Context, c Credentials) error {
 
 func (r *Reader) String() string {
 	return r.Name
+}
+
+func BuildReaders(ctx *stopper.Context, cfg *config.Config, client *Hydra) []process.Consumer[Credentials] {
+	readers := make([]process.Consumer[Credentials], cfg.Readers())
+	for idx := range readers {
+		readers[idx] = &Reader{
+			Client: client,
+			Name:   fmt.Sprintf("reader %d", idx),
+		}
+	}
+	return readers
 }

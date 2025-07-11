@@ -11,24 +11,6 @@ import (
 	"crdb-ory-load-test/internal/config"
 )
 
-type CheckRequest struct {
-	Namespace string `json:"namespace"`
-	Object    string `json:"object"`
-	Relation  string `json:"relation"`
-	SubjectID string `json:"subject_id"`
-}
-
-type CheckResponse struct {
-	Allowed bool `json:"allowed"`
-}
-
-type RelationTuple struct {
-	Namespace string `json:"namespace"`
-	Object    string `json:"object"`
-	Relation  string `json:"relation"`
-	SubjectID string `json:"subject_id"`
-}
-
 type Keto struct {
 	read  *client.Client
 	write *client.Client
@@ -41,14 +23,8 @@ func New(config *config.Config) *Keto {
 	}
 }
 
-func (k *Keto) CheckPermission(ctx *stopper.Context, namespace, object, relation, subjectID string) (bool, error) {
-	reqBody := CheckRequest{
-		Namespace: namespace,
-		Object:    object,
-		Relation:  relation,
-		SubjectID: subjectID,
-	}
-	jsonData, err := json.Marshal(reqBody)
+func (k *Keto) CheckPermission(ctx *stopper.Context, tuple *RelationTuple) (bool, error) {
+	jsonData, err := json.Marshal(tuple)
 	if err != nil {
 		return false, err
 	}
@@ -59,7 +35,7 @@ func (k *Keto) CheckPermission(ctx *stopper.Context, namespace, object, relation
 	var checkResp CheckResponse
 	err = json.Unmarshal(body, &checkResp)
 	if err != nil {
-		return false, errors.Wrap(err, "invalid token")
+		return false, errors.Wrap(err, "invalid tuple")
 	}
 	return checkResp.Allowed, nil
 }
@@ -74,22 +50,14 @@ func (k *Keto) HealthCheck(ctx *stopper.Context) error {
 	return nil
 }
 
-func (k *Keto) WriteTuple(ctx *stopper.Context, namespace, object, relation, subjectID string) error {
-	tuple := RelationTuple{
-		Namespace: namespace,
-		Object:    object,
-		Relation:  relation,
-		SubjectID: subjectID,
-	}
-
+func (k *Keto) WriteTuple(ctx *stopper.Context, tuple *RelationTuple) error {
 	jsonData, err := json.Marshal(tuple)
 	if err != nil {
 		return fmt.Errorf("failed to marshal tuple: %w", err)
 	}
-
-	_, err = k.write.PostJson(ctx, "admin/relation-tuples", jsonData)
+	_, err = k.write.PutJson(ctx, "admin/relation-tuples", jsonData)
 	if err != nil {
-		return errors.Wrap(err, "request to relation-tuples/check failed")
+		return errors.Wrap(err, "request to admin/relation-tuples failed")
 	}
 	return nil
 }

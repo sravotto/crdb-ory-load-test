@@ -42,18 +42,18 @@ var (
 		[]string{"service", "operation", "process_id"},
 	)
 
-	OAuthTokenCheckHistogram = prometheus.NewHistogramVec(
+	OryLatencyHistogram = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name: "ory_token_auth_request_sec",
-			Help: "the length of time spent in a token authorization request",
+			Name: "ory_request_sec",
+			Help: "the length of time spent in a ory request",
 		},
-		[]string{"operation"},
+		[]string{"service", "operation"},
 	)
 )
 
 func Init() {
 	prometheus.MustRegister(ErrorCounter)
-	prometheus.MustRegister(OAuthTokenCheckHistogram)
+	prometheus.MustRegister(OryLatencyHistogram)
 	prometheus.MustRegister(OAuthTokenCheckCounter)
 	prometheus.MustRegister(IdentityCheckCounter)
 	prometheus.MustRegister(PermissionCheckCounter)

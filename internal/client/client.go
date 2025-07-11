@@ -41,7 +41,6 @@ func (c *Client) Get(ctx *stopper.Context, path string) ([]byte, error) {
 	if err != nil {
 		return nil, errors.Wrap(err, "endpoint is invalid")
 	}
-
 	var resp *http.Response
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
@@ -90,8 +89,9 @@ func (c *Client) HealthCheck(ctx *stopper.Context) error {
 }
 
 func (c *Client) PostForm(ctx *stopper.Context, path string, data url.Values) ([]byte, error) {
-	return c.Post(
+	return c.submit(
 		ctx,
+		http.MethodPost,
 		path,
 		map[string]string{"Content-Type": "application/x-www-form-urlencoded"},
 		[]byte(data.Encode()),
@@ -99,20 +99,30 @@ func (c *Client) PostForm(ctx *stopper.Context, path string, data url.Values) ([
 }
 
 func (c *Client) PostJson(ctx *stopper.Context, path string, data []byte) ([]byte, error) {
-	return c.Post(
+	return c.submit(
 		ctx,
+		http.MethodPost,
 		path,
 		map[string]string{"Content-Type": "application/json"},
 		data,
 	)
 }
 
-func (c *Client) Post(ctx *stopper.Context, path string, headers map[string]string, data []byte) ([]byte, error) {
+func (c *Client) PutJson(ctx *stopper.Context, path string, data []byte) ([]byte, error) {
+	return c.submit(
+		ctx,
+		http.MethodPut,
+		path,
+		map[string]string{"Content-Type": "application/json"},
+		data,
+	)
+}
+func (c *Client) submit(ctx *stopper.Context, method string, path string, headers map[string]string, data []byte) ([]byte, error) {
 	endpoint, err := url.JoinPath(c.root, path)
 	if err != nil {
 		return nil, errors.Wrap(err, "endpoint is invalid")
 	}
-	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewBuffer(data))
+	req, err := http.NewRequestWithContext(ctx, method, endpoint, bytes.NewBuffer(data))
 	if err != nil {
 		return nil, errors.Wrap(err, "fail to create request")
 	}
@@ -130,6 +140,10 @@ func (c *Client) Post(ctx *stopper.Context, path string, headers map[string]stri
 		if attempt < 3 {
 			if err != nil {
 				log.Printf("retrying request %s %s", endpoint, err.Error())
+				if resp != nil {
+					detail, _ := io.ReadAll(resp.Body)
+					log.Print(string(detail))
+				}
 			} else {
 				log.Printf("retrying request %s %s", endpoint, resp.Status)
 			}
