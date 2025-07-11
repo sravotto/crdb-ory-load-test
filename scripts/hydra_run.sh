@@ -1,7 +1,7 @@
+#!/bin/bash
 export DSN=cockroach://root@host.docker.internal:26257/hydra?sslmode=disable
-#export SECRETS_SYSTEM=$(export LC_CTYPE=C; cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w 32 | head -n 1)
-#echo $SECRETS_SYSTEM > .secret
-export SECRETS_SYSTEM=`cat .secret`
+
+export SECRETS_SYSTEM="hydraSecretMustBeLong"
 docker run -d \
   --network hydraguide \
   --name hydra \

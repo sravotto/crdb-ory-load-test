@@ -7,11 +7,11 @@ import (
 
 	"github.com/cockroachdb/field-eng-powertools/stopper"
 
-	"crdb-ory-load-test/cmd/process"
 	"crdb-ory-load-test/internal/config"
 	"crdb-ory-load-test/internal/hydra"
 	"crdb-ory-load-test/internal/metrics"
 	"crdb-ory-load-test/internal/observer"
+	"crdb-ory-load-test/internal/process"
 )
 
 func RunHydraWorkload(ctx *stopper.Context, cfg *config.Config) error {

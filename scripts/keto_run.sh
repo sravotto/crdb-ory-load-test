@@ -1,3 +1,5 @@
+#!/bin/bash
+
 export DSN=cockroach://root@host.docker.internal:26257/keto?sslmode=disable
 
 docker run -d \

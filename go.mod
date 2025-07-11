@@ -5,6 +5,7 @@ go 1.24.1
 require (
 	github.com/brianvoe/gofakeit/v6 v6.28.0
 	github.com/google/uuid v1.6.0
+	github.com/pkg/errors v0.9.1
 	github.com/prometheus/client_golang v1.22.0
 	gopkg.in/yaml.v3 v3.0.1
 )
@@ -15,7 +16,6 @@ require (
 	github.com/getsentry/sentry-go v0.27.0 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 )

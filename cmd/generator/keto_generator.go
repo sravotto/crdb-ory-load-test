@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
-	"crdb-ory-load-test/cmd/process"
 	"crdb-ory-load-test/internal/config"
 	"crdb-ory-load-test/internal/keto"
 	"crdb-ory-load-test/internal/metrics"
 	"crdb-ory-load-test/internal/observer"
+	"crdb-ory-load-test/internal/process"
 
 	"github.com/cockroachdb/field-eng-powertools/stopper"
 )

@@ -1,8 +1,8 @@
 package keto
 
 import (
-	"crdb-ory-load-test/cmd/process"
 	"crdb-ory-load-test/internal/config"
+	"crdb-ory-load-test/internal/process"
 	"fmt"
 	"log"
 	"time"
