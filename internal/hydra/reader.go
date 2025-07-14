@@ -1,10 +1,8 @@
 package hydra
 
 import (
-	"crdb-ory-load-test/internal/config"
 	"crdb-ory-load-test/internal/metrics"
 	"crdb-ory-load-test/internal/process"
-	"fmt"
 	"log"
 
 	"github.com/cockroachdb/field-eng-powertools/stopper"
@@ -16,9 +14,9 @@ type Reader struct {
 	Active, Inactive int
 }
 
-var _ process.Consumer[Credentials] = &Reader{}
+var _ process.Consumer[*Credentials] = &Reader{}
 
-func (r *Reader) Consume(ctx *stopper.Context, c Credentials) error {
+func (r *Reader) Consume(ctx *stopper.Context, c *Credentials) error {
 	active, err := r.Client.IntrospectToken(ctx, c.AccessToken)
 	if err != nil {
 		log.Printf("error calling hydra %s", err)
@@ -37,15 +35,4 @@ func (r *Reader) Consume(ctx *stopper.Context, c Credentials) error {
 
 func (r *Reader) String() string {
 	return r.Name
-}
-
-func BuildReaders(ctx *stopper.Context, cfg *config.Config, client *Hydra) []process.Consumer[Credentials] {
-	readers := make([]process.Consumer[Credentials], cfg.Readers())
-	for idx := range readers {
-		readers[idx] = &Reader{
-			Client: client,
-			Name:   fmt.Sprintf("reader %d", idx),
-		}
-	}
-	return readers
 }

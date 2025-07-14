@@ -9,6 +9,7 @@ import (
 
 	"crdb-ory-load-test/internal/client"
 	"crdb-ory-load-test/internal/config"
+	"crdb-ory-load-test/internal/process"
 )
 
 type Keto struct {
@@ -16,13 +17,38 @@ type Keto struct {
 	write *client.Client
 }
 
-func New(config *config.Config) *Keto {
+var _ process.Client[*RelationTuple] = &Keto{}
+
+func New(config *config.Config) process.Client[*RelationTuple] {
 	return &Keto{
 		read:  client.New(config.Keto.ReadAPI),
 		write: client.New(config.Keto.WriteAPI),
 	}
 }
 
+func (k *Keto) BuildReaders(ctx *stopper.Context, cfg *config.Config) ([]process.Consumer[*RelationTuple], error) {
+	readers := make([]process.Consumer[*RelationTuple], cfg.Writers())
+	for idx := range readers {
+		reader := &Reader{
+			Client: k,
+			Name:   fmt.Sprintf("keto-writer-%d", idx),
+		}
+		readers[idx] = reader
+	}
+	return readers, nil
+}
+
+func (k *Keto) BuildWriters(ctx *stopper.Context, cfg *config.Config) ([]process.Producer[*RelationTuple], error) {
+	writers := make([]process.Producer[*RelationTuple], cfg.Writers())
+	for idx := range writers {
+		writer := &Writer{
+			Client: k,
+			Name:   fmt.Sprintf("keto-writer-%d", idx),
+		}
+		writers[idx] = writer
+	}
+	return writers, nil
+}
 func (k *Keto) CheckPermission(ctx *stopper.Context, tuple *RelationTuple) (bool, error) {
 	jsonData, err := json.Marshal(tuple)
 	if err != nil {
@@ -50,6 +76,9 @@ func (k *Keto) HealthCheck(ctx *stopper.Context) error {
 	return nil
 }
 
+func (k *Keto) String() string {
+	return "keto"
+}
 func (k *Keto) WriteTuple(ctx *stopper.Context, tuple *RelationTuple) error {
 	jsonData, err := json.Marshal(tuple)
 	if err != nil {

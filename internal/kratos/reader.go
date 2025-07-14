@@ -1,10 +1,8 @@
 package kratos
 
 import (
-	"crdb-ory-load-test/internal/config"
 	"crdb-ory-load-test/internal/metrics"
 	"crdb-ory-load-test/internal/process"
-	"fmt"
 	"log"
 
 	"github.com/cockroachdb/field-eng-powertools/stopper"
@@ -37,16 +35,4 @@ func (r *Reader) Consume(ctx *stopper.Context, identity *Identity) error {
 
 func (r *Reader) String() string {
 	return r.Name
-}
-
-func BuildReaders(ctx *stopper.Context, cfg *config.Config, client *Kratos) []process.Consumer[*Identity] {
-	readers := make([]process.Consumer[*Identity], cfg.Writers())
-	for idx := range readers {
-		reader := &Reader{
-			Client: client,
-			Name:   fmt.Sprintf("kratos-writer-%d", idx),
-		}
-		readers[idx] = reader
-	}
-	return readers
 }

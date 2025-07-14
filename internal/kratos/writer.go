@@ -1,9 +1,7 @@
 package kratos
 
 import (
-	"crdb-ory-load-test/internal/config"
 	"crdb-ory-load-test/internal/process"
-	"fmt"
 	"log"
 	"time"
 
@@ -43,16 +41,4 @@ func (w *Writer) Produce(ctx *stopper.Context) (*Identity, error) {
 
 func (w *Writer) String() string {
 	return w.Name
-}
-
-func BuildWriters(ctx *stopper.Context, cfg *config.Config, client *Kratos) []process.Producer[*Identity] {
-	writers := make([]process.Producer[*Identity], cfg.Writers())
-	for idx := range writers {
-		writer := &Writer{
-			Client: client,
-			Name:   fmt.Sprintf("kratos-writer-%d", idx),
-		}
-		writers[idx] = writer
-	}
-	return writers
 }

@@ -3,6 +3,7 @@ package kratos
 import (
 	"crdb-ory-load-test/internal/client"
 	"crdb-ory-load-test/internal/config"
+	"crdb-ory-load-test/internal/process"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -72,11 +73,37 @@ type Kratos struct {
 	public *client.Client
 }
 
+var _ process.Client[*Identity] = &Kratos{}
+
 func New(config *config.Config) *Kratos {
 	return &Kratos{
 		admin:  client.New(config.Kratos.AdminAPI),
 		public: client.New(config.Kratos.PublicAPI),
 	}
+}
+
+func (k *Kratos) BuildReaders(ctx *stopper.Context, cfg *config.Config) ([]process.Consumer[*Identity], error) {
+	readers := make([]process.Consumer[*Identity], cfg.Writers())
+	for idx := range readers {
+		reader := &Reader{
+			Client: k,
+			Name:   fmt.Sprintf("kratos-writer-%d", idx),
+		}
+		readers[idx] = reader
+	}
+	return readers, nil
+}
+
+func (k *Kratos) BuildWriters(ctx *stopper.Context, cfg *config.Config) ([]process.Producer[*Identity], error) {
+	writers := make([]process.Producer[*Identity], cfg.Writers())
+	for idx := range writers {
+		writer := &Writer{
+			Client: k,
+			Name:   fmt.Sprintf("kratos-writer-%d", idx),
+		}
+		writers[idx] = writer
+	}
+	return writers, nil
 }
 
 func (k *Kratos) CheckIdentity(ctx *stopper.Context, email string) (bool, error) {
@@ -116,6 +143,10 @@ func (k *Kratos) RegisterIdentity(ctx *stopper.Context, identity *Identity, pass
 		return errors.New("registration flow failed")
 	}
 	return k.registrationIdentity(ctx, regFlowId, identity, password)
+}
+
+func (k *Kratos) String() string {
+	return "kratos"
 }
 
 func (k *Kratos) createRegistrationFlow(ctx *stopper.Context) (string, error) {

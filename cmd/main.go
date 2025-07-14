@@ -12,9 +12,12 @@ import (
 	"syscall"
 	"time"
 
-	"crdb-ory-load-test/cmd/generator"
 	"crdb-ory-load-test/internal/config"
+	"crdb-ory-load-test/internal/hydra"
+	"crdb-ory-load-test/internal/keto"
+	"crdb-ory-load-test/internal/kratos"
 	"crdb-ory-load-test/internal/metrics"
+	"crdb-ory-load-test/internal/workload"
 
 	"github.com/cockroachdb/field-eng-powertools/stopper"
 )
@@ -35,7 +38,7 @@ Usage:
   ./crdb-ory-load-test [flags]
 
 Options:
-  -scope               Scope of Workload Simulation (valid values: hydra, kratos, keto. Default: all)
+  -scope               Scope of Workload Simulation (valid values: hydra, kratos, keto)
   -checks-per-second   Max permission checks per second (overrides config file)
   -duration-sec        Run for this many seconds (default from config file)
   -read-ratio          Read-to-write ratio (e.g. 100 means 100 reads per 1 write)
@@ -44,8 +47,6 @@ Options:
   -serve-metrics       Keep Prometheus metrics endpoint alive after run (default: false)
   -help                Show this help message
 
-This tool assumes Ory + CockroachDB Sandbox is deployed and reachable.
-See install docs: https://github.com/amineelkouhen/crdb-ory-sandbox/?tab=readme-ov-file#-deployment
 `)
 	}
 
@@ -102,11 +103,21 @@ See install docs: https://github.com/amineelkouhen/crdb-ory-sandbox/?tab=readme-
 	metrics.Init()
 	switch strings.ToLower(*scope) {
 	case "hydra":
-		err = generator.RunHydraWorkload(ctx, config)
-	case "kratos":
-		err = generator.RunKratosWorkload(ctx, config)
+		if err = config.CheckHydra(); err == nil {
+			client := hydra.New(config)
+			err = workload.Run(ctx, config, client)
+		}
+
 	case "keto":
-		err = generator.RunKetoWorkload(ctx, config)
+		if err = config.CheckKeto(); err == nil {
+			client := keto.New(config)
+			err = workload.Run(ctx, config, client)
+		}
+	case "kratos":
+		if err = config.CheckKratos(); err == nil {
+			client := kratos.New(config)
+			err = workload.Run(ctx, config, client)
+		}
 	default:
 		log.Fatal("scope not implemented")
 	}

@@ -1,10 +1,8 @@
 package keto
 
 import (
-	"crdb-ory-load-test/internal/config"
 	"crdb-ory-load-test/internal/metrics"
 	"crdb-ory-load-test/internal/process"
-	"fmt"
 	"log"
 
 	"github.com/cockroachdb/field-eng-powertools/stopper"
@@ -37,16 +35,4 @@ func (r *Reader) Consume(ctx *stopper.Context, tuple *RelationTuple) error {
 
 func (r *Reader) String() string {
 	return r.Name
-}
-
-func BuildReaders(ctx *stopper.Context, cfg *config.Config, client *Keto) []process.Consumer[*RelationTuple] {
-	readers := make([]process.Consumer[*RelationTuple], cfg.Writers())
-	for idx := range readers {
-		reader := &Reader{
-			Client: client,
-			Name:   fmt.Sprintf("keto-writer-%d", idx),
-		}
-		readers[idx] = reader
-	}
-	return readers
 }

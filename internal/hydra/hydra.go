@@ -3,13 +3,16 @@ package hydra
 import (
 	"crdb-ory-load-test/internal/client"
 	"crdb-ory-load-test/internal/config"
+	"crdb-ory-load-test/internal/process"
 	"encoding/json"
+	"fmt"
 
 	"net/url"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/field-eng-powertools/stopper"
-	"github.com/pkg/errors"
+	"github.com/google/uuid"
 )
 
 type createClientRequest struct {
@@ -68,11 +71,45 @@ type Hydra struct {
 	public *client.Client
 }
 
+var _ process.Client[*Credentials] = &Hydra{}
+
 func New(config *config.Config) *Hydra {
 	return &Hydra{
 		admin:  client.New(config.Hydra.AdminAPI),
 		public: client.New(config.Hydra.PublicAPI),
 	}
+}
+
+func (h *Hydra) BuildReaders(ctx *stopper.Context, cfg *config.Config) ([]process.Consumer[*Credentials], error) {
+	readers := make([]process.Consumer[*Credentials], cfg.Readers())
+	for idx := range readers {
+		readers[idx] = &Reader{
+			Client: h,
+			Name:   fmt.Sprintf("reader %d", idx),
+		}
+	}
+	return readers, nil
+}
+
+func (h *Hydra) BuildWriters(
+	ctx *stopper.Context,
+	cfg *config.Config,
+) ([]process.Producer[*Credentials], error) {
+	writers := make([]process.Producer[*Credentials], cfg.Writers())
+	for idx := range writers {
+		writer := &Writer{
+			Client: h,
+			ID:     uuid.New().String(),
+			Secret: uuid.New().String(),
+			Name:   fmt.Sprintf("hydra-load-test-client-%d", idx),
+		}
+		writers[idx] = writer
+		created, err := h.CreateOAuth2Client(ctx, writer)
+		if err != nil || !created {
+			return nil, errors.Join(err, errors.New("failed to create writer"))
+		}
+	}
+	return writers, nil
 }
 
 func (h *Hydra) CreateOAuth2Client(ctx *stopper.Context, w *Writer) (bool, error) {
@@ -134,4 +171,8 @@ func (h *Hydra) IntrospectToken(ctx *stopper.Context, token string) (bool, error
 		return false, errors.Wrap(err, "invalid token")
 	}
 	return tokenIntrospectionResponse["active"].(bool), nil
+}
+
+func (h *Hydra) String() string {
+	return "hydra"
 }

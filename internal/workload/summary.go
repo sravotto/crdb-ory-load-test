@@ -1,4 +1,4 @@
-package generator
+package workload
 
 import (
 	"crdb-ory-load-test/internal/config"

@@ -1,9 +1,7 @@
 package keto
 
 import (
-	"crdb-ory-load-test/internal/config"
 	"crdb-ory-load-test/internal/process"
-	"fmt"
 	"log"
 	"time"
 
@@ -44,16 +42,4 @@ func (w *Writer) Produce(ctx *stopper.Context) (*RelationTuple, error) {
 
 func (w *Writer) String() string {
 	return w.Name
-}
-
-func BuildWriters(ctx *stopper.Context, cfg *config.Config, client *Keto) []process.Producer[*RelationTuple] {
-	writers := make([]process.Producer[*RelationTuple], cfg.Writers())
-	for idx := range writers {
-		writer := &Writer{
-			Client: client,
-			Name:   fmt.Sprintf("keto-writer-%d", idx),
-		}
-		writers[idx] = writer
-	}
-	return writers
 }
