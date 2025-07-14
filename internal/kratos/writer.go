@@ -1,6 +1,7 @@
 package kratos
 
 import (
+	"crdb-ory-load-test/internal/metrics"
 	"crdb-ory-load-test/internal/process"
 	"log"
 	"time"
@@ -27,8 +28,10 @@ func (w *Writer) Produce(ctx *stopper.Context) (*Identity, error) {
 		}
 		err := w.Client.RegisterIdentity(ctx, identity, gofakeit.Password(true, true, true, true, false, 8))
 		if err != nil {
+			metrics.ErrorCounter.WithLabelValues("kratos", "register_identity", w.Name).Inc()
 			log.Printf("RegisterIdentity failed: %v", err)
 		} else {
+			metrics.MessageCounter.WithLabelValues("kratos", "register_identity", w.Name).Inc()
 			return identity, nil
 		}
 		select {

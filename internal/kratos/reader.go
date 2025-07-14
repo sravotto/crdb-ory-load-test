@@ -24,11 +24,11 @@ func (r *Reader) Consume(ctx *stopper.Context, identity *Identity) error {
 		return err
 	}
 	if active {
-		metrics.IdentityCheckCounter.WithLabelValues("active").Inc()
+		metrics.MessageCounter.WithLabelValues("kratos", "check_identity_active", r.Name).Inc()
 		r.Active++
 		return nil
 	}
-	metrics.IdentityCheckCounter.WithLabelValues("inactive").Inc()
+	metrics.MessageCounter.WithLabelValues("kratos", "check_identity_inactive", r.Name).Inc()
 	r.Inactive++
 	return nil
 }

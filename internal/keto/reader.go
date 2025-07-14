@@ -24,11 +24,11 @@ func (r *Reader) Consume(ctx *stopper.Context, tuple *RelationTuple) error {
 		return err
 	}
 	if allowed {
-		metrics.PermissionCheckCounter.WithLabelValues("allowed").Inc()
+		metrics.MessageCounter.WithLabelValues("keto", "check_permission_allowed", r.Name).Inc()
 		r.Allowed++
 		return nil
 	}
-	metrics.PermissionCheckCounter.WithLabelValues("denied").Inc()
+	metrics.MessageCounter.WithLabelValues("keto", "check_permission_denied", r.Name).Inc()
 	r.Denied++
 	return nil
 }

@@ -25,10 +25,10 @@ func (r *Reader) Consume(ctx *stopper.Context, c *Credentials) error {
 	}
 	if active {
 		r.Active++
-		metrics.OAuthTokenCheckCounter.WithLabelValues("active").Inc()
+		metrics.MessageCounter.WithLabelValues("hydra", "introspect_active", r.Name).Inc()
 	} else {
 		r.Inactive++
-		metrics.OAuthTokenCheckCounter.WithLabelValues("inactive").Inc()
+		metrics.MessageCounter.WithLabelValues("hydra", "introspect_inactive", r.Name).Inc()
 	}
 	return nil
 }

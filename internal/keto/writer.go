@@ -1,6 +1,7 @@
 package keto
 
 import (
+	"crdb-ory-load-test/internal/metrics"
 	"crdb-ory-load-test/internal/process"
 	"log"
 	"time"
@@ -28,8 +29,10 @@ func (w *Writer) Produce(ctx *stopper.Context) (*RelationTuple, error) {
 		}
 		err := w.Client.WriteTuple(ctx, tuple)
 		if err != nil {
+			metrics.ErrorCounter.WithLabelValues("keto", "write_tuple", w.Name).Inc()
 			log.Printf("WriteTuple failed: %v", err)
 		} else {
+			metrics.MessageCounter.WithLabelValues("keto", "write_tuple", w.Name).Inc()
 			return tuple, nil
 		}
 		select {

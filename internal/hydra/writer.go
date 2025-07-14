@@ -27,6 +27,7 @@ func (w *Writer) Produce(ctx *stopper.Context) (*Credentials, error) {
 			log.Printf("error calling hydra %s", err)
 			metrics.ErrorCounter.WithLabelValues("hydra", "grant", w.Name).Inc()
 		} else {
+			metrics.MessageCounter.WithLabelValues("hydra", "grant", w.Name).Inc()
 			return &Credentials{
 				ClientID:     w.ID,
 				ClientSecret: w.Secret,

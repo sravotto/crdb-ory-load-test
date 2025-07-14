@@ -10,28 +10,12 @@ import (
 )
 
 var (
-	OAuthTokenCheckCounter = prometheus.NewCounterVec(
+	MessageCounter = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "ory_token_check_total",
-			Help: "Total oauth token checks run",
+			Name: "ory_message_counter",
+			Help: "Total errors contacting ory services",
 		},
-		[]string{"result"},
-	)
-
-	PermissionCheckCounter = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "ory_permission_check_total",
-			Help: "Total permission checks run",
-		},
-		[]string{"result"},
-	)
-
-	IdentityCheckCounter = prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "ory_identity_check_total",
-			Help: "Total identity checks run",
-		},
-		[]string{"result"},
+		[]string{"service", "operation", "process_id"},
 	)
 
 	ErrorCounter = prometheus.NewCounterVec(
@@ -54,9 +38,7 @@ var (
 func Init() {
 	prometheus.MustRegister(ErrorCounter)
 	prometheus.MustRegister(OryLatencyHistogram)
-	prometheus.MustRegister(OAuthTokenCheckCounter)
-	prometheus.MustRegister(IdentityCheckCounter)
-	prometheus.MustRegister(PermissionCheckCounter)
+	prometheus.MustRegister(MessageCounter)
 	// Health and metrics endpoints
 	http.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
