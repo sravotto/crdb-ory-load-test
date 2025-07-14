@@ -83,11 +83,11 @@ func New(config *config.Config) *Kratos {
 }
 
 func (k *Kratos) BuildReaders(ctx *stopper.Context, cfg *config.Config) ([]process.Consumer[*Identity], error) {
-	readers := make([]process.Consumer[*Identity], cfg.Writers())
+	readers := make([]process.Consumer[*Identity], cfg.Readers())
 	for idx := range readers {
 		reader := &Reader{
 			Client: k,
-			Name:   fmt.Sprintf("kratos-writer-%d", idx),
+			Name:   fmt.Sprintf("kratos-reader-%d", idx),
 		}
 		readers[idx] = reader
 	}

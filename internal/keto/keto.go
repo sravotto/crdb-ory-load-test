@@ -27,11 +27,11 @@ func New(config *config.Config) process.Client[*RelationTuple] {
 }
 
 func (k *Keto) BuildReaders(ctx *stopper.Context, cfg *config.Config) ([]process.Consumer[*RelationTuple], error) {
-	readers := make([]process.Consumer[*RelationTuple], cfg.Writers())
+	readers := make([]process.Consumer[*RelationTuple], cfg.Readers())
 	for idx := range readers {
 		reader := &Reader{
 			Client: k,
-			Name:   fmt.Sprintf("keto-writer-%d", idx),
+			Name:   fmt.Sprintf("keto-reader-%d", idx),
 		}
 		readers[idx] = reader
 	}

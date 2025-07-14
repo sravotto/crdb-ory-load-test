@@ -85,7 +85,7 @@ func (h *Hydra) BuildReaders(ctx *stopper.Context, cfg *config.Config) ([]proces
 	for idx := range readers {
 		readers[idx] = &Reader{
 			Client: h,
-			Name:   fmt.Sprintf("reader %d", idx),
+			Name:   fmt.Sprintf("hydra-reader-%d", idx),
 		}
 	}
 	return readers, nil
@@ -101,7 +101,7 @@ func (h *Hydra) BuildWriters(
 			Client: h,
 			ID:     uuid.New().String(),
 			Secret: uuid.New().String(),
-			Name:   fmt.Sprintf("hydra-load-test-client-%d", idx),
+			Name:   fmt.Sprintf("hydra-writer-%d", idx),
 		}
 		writers[idx] = writer
 		created, err := h.CreateOAuth2Client(ctx, writer)
