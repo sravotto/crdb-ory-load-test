@@ -38,9 +38,11 @@ func RunKetoWorkload(ctx *stopper.Context, cfg *config.Config) error {
 	var wg sync.WaitGroup
 	tupleChannel := make(chan *keto.RelationTuple, 100)
 	defer close(tupleChannel)
-	readerObs := &observer.Observer{
-		Name:     "keto-reads",
-		Delegate: metrics.OryLatencyHistogram.WithLabelValues("keto", "read"),
+	readerObs, err := observer.NewObserver("keto-reads",
+		metrics.OryLatencyHistogram.WithLabelValues("keto", "read"),
+	)
+	if err != nil {
+		return err
 	}
 	consumerPool := process.ConsumerPool[*keto.RelationTuple]{
 		Consumers: readers,
@@ -49,9 +51,11 @@ func RunKetoWorkload(ctx *stopper.Context, cfg *config.Config) error {
 		Repeats:   cfg.Workload.ReadRatio,
 	}
 	consumerPool.Start(ctx, &wg, tupleChannel)
-	writerObs := &observer.Observer{
-		Name:     "keto-writes",
-		Delegate: metrics.OryLatencyHistogram.WithLabelValues("keto", "write"),
+	writerObs, err := observer.NewObserver("keto-writes",
+		metrics.OryLatencyHistogram.WithLabelValues("keto", "write"),
+	)
+	if err != nil {
+		return err
 	}
 	producerPool := process.ProducerPool[*keto.RelationTuple]{
 		Producers: writers,

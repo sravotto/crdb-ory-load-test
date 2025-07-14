@@ -21,6 +21,7 @@ require (
 )
 
 require (
+	github.com/DataDog/sketches-go v1.4.7
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/cockroachdb/errors v1.12.0

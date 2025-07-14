@@ -13,12 +13,6 @@ import (
 	"github.com/cockroachdb/field-eng-powertools/stopper"
 )
 
-type identity struct {
-	Email     string
-	FirstName string
-	LastName  string
-}
-
 func RunKratosWorkload(ctx *stopper.Context, cfg *config.Config) error {
 	if err := cfg.CheckKratos(); err != nil {
 		return err
@@ -37,9 +31,11 @@ func RunKratosWorkload(ctx *stopper.Context, cfg *config.Config) error {
 	var wg sync.WaitGroup
 	tupleChannel := make(chan *kratos.Identity, 100)
 	defer close(tupleChannel)
-	readerObs := &observer.Observer{
-		Name:     "kratos-reads",
-		Delegate: metrics.OryLatencyHistogram.WithLabelValues("kratos", "read"),
+	readerObs, err := observer.NewObserver("kratos-reads",
+		metrics.OryLatencyHistogram.WithLabelValues("kratos", "read"),
+	)
+	if err != nil {
+		return err
 	}
 	consumerPool := process.ConsumerPool[*kratos.Identity]{
 		Consumers: readers,
@@ -48,9 +44,11 @@ func RunKratosWorkload(ctx *stopper.Context, cfg *config.Config) error {
 		Repeats:   cfg.Workload.ReadRatio,
 	}
 	consumerPool.Start(ctx, &wg, tupleChannel)
-	writerObs := &observer.Observer{
-		Name:     "kratos-writs",
-		Delegate: metrics.OryLatencyHistogram.WithLabelValues("kratos", "write"),
+	writerObs, err := observer.NewObserver("kratos-writes",
+		metrics.OryLatencyHistogram.WithLabelValues("kratos", "writes"),
+	)
+	if err != nil {
+		return err
 	}
 	producerPool := process.ProducerPool[*kratos.Identity]{
 		Producers: writers,
