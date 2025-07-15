@@ -9,7 +9,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 
 	"github.com/cockroachdb/field-eng-powertools/stopper"
 )

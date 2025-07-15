@@ -4,8 +4,8 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/cockroachdb/errors"
 	"github.com/cockroachdb/field-eng-powertools/stopper"
-	"github.com/pkg/errors"
 
 	"crdb-ory-load-test/internal/client"
 	"crdb-ory-load-test/internal/config"

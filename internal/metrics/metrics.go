@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"log"
+	"math"
 	"net/http"
 	_ "net/http/pprof" // enabling debugging
 
@@ -28,12 +29,28 @@ var (
 
 	OryLatencyHistogram = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name: "ory_request_sec",
-			Help: "the length of time spent in a ory request",
+			Name:    "ory_request_sec",
+			Help:    "the length of time spent in a ory request",
+			Buckets: buckets(0.01, 10),
 		},
 		[]string{"service", "operation"},
 	)
 )
+
+func buckets(base, max float64) []float64 {
+	var ret []float64
+	for {
+		for i := 0; i < 9; i++ {
+			next := math.FMA(float64(i), base, base)
+			if next > max {
+				return ret
+			}
+			next = math.Round(next*1000) / 1000
+			ret = append(ret, next)
+		}
+		base *= 10
+	}
+}
 
 func Init() {
 	prometheus.MustRegister(ErrorCounter)
