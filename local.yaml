@@ -9,5 +9,5 @@ kratos:
   public_api: "http://localhost:4433"  
 workload:
   readers: 10 
-  read_ratio: 2             # 💡 For every write, do ~100 reads i.e. number of reads per write
-  duration_sec: 60            # 💡 Run for 60 seconds, set to 0 to run indefinitely
+  read_ratio: 2
+  duration_sec: 120

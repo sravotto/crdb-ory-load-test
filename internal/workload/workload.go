@@ -36,10 +36,11 @@ func Run[T any](ctx *stopper.Context, cfg *config.Config, client process.Client[
 		return err
 	}
 	consumerPool := process.ConsumerPool[T]{
-		Consumers: readers,
-		Observer:  readerObs,
-		Duration:  cfg.Duration(),
-		Repeats:   cfg.Workload.ReadRatio,
+		Consumers:      readers,
+		Observer:       readerObs,
+		Duration:       cfg.Duration(),
+		Repeats:        cfg.Workload.ReadRatio,
+		TolerateErrors: cfg.Workload.TolerateErrors,
 	}
 	consumerPool.Start(ctx, &wg, messages)
 	writerObs, err := observer.NewObserver(client.String()+"-writes",
@@ -49,12 +50,13 @@ func Run[T any](ctx *stopper.Context, cfg *config.Config, client process.Client[
 		return err
 	}
 	producerPool := process.ProducerPool[T]{
-		Producers: writers,
-		Observer:  writerObs,
-		Duration:  cfg.Duration(),
+		Producers:      writers,
+		Observer:       writerObs,
+		Duration:       cfg.Duration(),
+		TolerateErrors: cfg.Workload.TolerateErrors,
 	}
 	start := time.Now()
-	printProgress(ctx, []*observer.Observer{readerObs, writerObs})
+	printProgress(ctx, []observer.Observer{readerObs, writerObs})
 	producerPool.Start(ctx, &wg, messages)
 	wg.Wait()
 	printSummary(cfg, start, readerObs, writerObs)

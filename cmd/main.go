@@ -6,11 +6,14 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
 	"time"
+
+	"github.com/cockroachdb/errors"
 
 	"crdb-ory-load-test/internal/config"
 	"crdb-ory-load-test/internal/hydra"
@@ -28,7 +31,8 @@ func main() {
 	readRatio := flag.Int("read-ratio", 0, "Override read/write ratio (e.g. 100 = 100:1)")
 	workloadConfig := flag.String("workload-config", "config/config.yaml", "Path to workload config")
 	logFile := flag.String("log-file", "", "Path to log output file")
-	verbose := flag.Bool("verbose", true, "Enable verbose logging")
+	verbose := flag.Bool("verbose", false, "Enable verbose logging")
+	tolerateErrors := flag.Bool("tolerate-errors", false, "Continue in case of errors")
 
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), `
@@ -44,7 +48,7 @@ Options:
   -read-ratio          Read-to-write ratio (e.g. 100 means 100 reads per 1 write)
   -workload-config     Path to workload config file (default: config/config.yaml)
   -log-file            Path to write logs to (default: stdout only)
-  -serve-metrics       Keep Prometheus metrics endpoint alive after run (default: false)
+  -tolerate-errors     Continue in case of errors
   -help                Show this help message
 
 `)
@@ -59,7 +63,8 @@ Options:
 
 	config, err := config.LoadConfig(*workloadConfig)
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		slog.Error("workload failed", err)
+		return
 	}
 
 	if *duration > 0 {
@@ -69,18 +74,17 @@ Options:
 		config.Workload.ReadRatio = *readRatio
 	}
 
+	if !*verbose {
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	}
+	config.Workload.TolerateErrors = *tolerateErrors
 	if *logFile != "" {
 		f, err := os.Create(*logFile)
 		if err != nil {
 			log.Fatalf("Failed to create log file: %v", err)
 		}
 		defer f.Close()
-
-		if *verbose {
-			log.SetOutput(io.MultiWriter(os.Stdout, f))
-		} else {
-			log.SetOutput(f)
-		}
+		log.SetOutput(io.MultiWriter(os.Stdout, f))
 	} else if !*verbose {
 		log.SetOutput(io.Discard)
 	}
@@ -93,7 +97,7 @@ Options:
 		defer cancel()
 		select {
 		case <-ctx.Done():
-			log.Print("Interrupted")
+			slog.Info("Interrupted")
 			stop.Stop(gracePeriod)
 		case <-stop.Stopping():
 			// Nothing to do.
@@ -119,9 +123,9 @@ Options:
 			err = workload.Run(ctx, config, client)
 		}
 	default:
-		log.Fatal("scope not implemented")
+		err = errors.Newf("scope not implemented %s", *scope)
 	}
 	if err != nil {
-		log.Fatalf("workload failed %s", err)
+		slog.Error("workload failed", err)
 	}
 }

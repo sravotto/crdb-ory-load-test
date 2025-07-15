@@ -11,25 +11,29 @@ import (
 )
 
 var (
-	MessageCounter = prometheus.NewCounterVec(
+	CounterLabels     = []string{"service", "operation", "process_id"}
+	MessagCounterName = "ory_message_counter"
+	MessageCounter    = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "ory_message_counter",
+			Name: MessagCounterName,
 			Help: "Total errors contacting ory services",
 		},
-		[]string{"service", "operation", "process_id"},
+		CounterLabels,
 	)
 
-	ErrorCounter = prometheus.NewCounterVec(
+	ErrorCounterName = "ory_error_counter"
+	ErrorCounter     = prometheus.NewCounterVec(
 		prometheus.CounterOpts{
-			Name: "ory_error_counter",
+			Name: ErrorCounterName,
 			Help: "Total errors contacting ory services",
 		},
-		[]string{"service", "operation", "process_id"},
+		CounterLabels,
 	)
 
-	OryLatencyHistogram = prometheus.NewHistogramVec(
+	OryLatencyHistogramName = "ory_request_sec"
+	OryLatencyHistogram     = prometheus.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "ory_request_sec",
+			Name:    OryLatencyHistogramName,
 			Help:    "the length of time spent in a ory request",
 			Buckets: buckets(0.01, 10),
 		},

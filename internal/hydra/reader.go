@@ -9,9 +9,8 @@ import (
 )
 
 type Reader struct {
-	Client           *Hydra
-	Name             string
-	Active, Inactive int
+	Client *Hydra
+	Name   string
 }
 
 var _ process.Consumer[*Credentials] = &Reader{}
@@ -24,12 +23,10 @@ func (r *Reader) Consume(ctx *stopper.Context, c *Credentials) error {
 		return err
 	}
 	if active {
-		r.Active++
 		metrics.MessageCounter.WithLabelValues("hydra", "introspect_active", r.Name).Inc()
-	} else {
-		r.Inactive++
-		metrics.MessageCounter.WithLabelValues("hydra", "introspect_inactive", r.Name).Inc()
+		return nil
 	}
+	metrics.MessageCounter.WithLabelValues("hydra", "introspect_inactive", r.Name).Inc()
 	return nil
 }
 

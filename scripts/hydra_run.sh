@@ -8,6 +8,7 @@ docker run -d \
   -p 5444:4444 \
   -p 5445:4445 \
   -e SECRETS_SYSTEM=$SECRETS_SYSTEM \
+  -e LOG_LEVEL=warn \
   -e DSN=$DSN \
   -e URLS_SELF_ISSUER=http://localhost:5444/ \
   -e URLS_CONSENT=http://localhost:9020/consent \

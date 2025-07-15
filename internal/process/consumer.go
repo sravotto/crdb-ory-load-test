@@ -15,10 +15,11 @@ type Consumer[T any] interface {
 }
 
 type ConsumerPool[T any] struct {
-	Consumers []Consumer[T]
-	Observer  prometheus.Observer
-	Duration  time.Duration
-	Repeats   int
+	Consumers      []Consumer[T]
+	Observer       prometheus.Observer
+	Duration       time.Duration
+	Repeats        int
+	TolerateErrors bool
 }
 
 func (c *ConsumerPool[T]) Start(ctx *stopper.Context, wg *sync.WaitGroup, data <-chan T) {
@@ -27,20 +28,26 @@ func (c *ConsumerPool[T]) Start(ctx *stopper.Context, wg *sync.WaitGroup, data <
 		wg.Add(1)
 		ok := ctx.Go(func(ctx *stopper.Context) error {
 			defer wg.Done()
-			ticker := time.NewTicker(c.Duration)
-			defer ticker.Stop()
+			timeout := time.NewTicker(c.Duration)
+			defer timeout.Stop()
 			for {
 				select {
-				case item := <-data:
+				case item, ok := <-data:
+					if !ok {
+						return nil
+					}
 					start := time.Now()
 					for i := 0; i < c.Repeats; i++ {
 						err := consumer.Consume(ctx, item)
 						if err != nil {
+							if c.TolerateErrors {
+								break
+							}
 							return err
 						}
 						c.Observer.Observe(float64(time.Since(start).Seconds()))
 					}
-				case <-ticker.C:
+				case <-timeout.C:
 					return nil
 				case <-ctx.Stopping():
 					return ctx.Err()

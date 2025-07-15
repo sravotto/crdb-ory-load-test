@@ -27,9 +27,10 @@ type Config struct {
 	} `yaml:"keto"`
 
 	Workload struct {
-		Readers     int `yaml:"readers"`
-		ReadRatio   int `yaml:"read_ratio"`
-		DurationSec int `yaml:"duration_sec"`
+		Readers        int  `yaml:"readers"`
+		ReadRatio      int  `yaml:"read_ratio"`
+		DurationSec    int  `yaml:"duration_sec"`
+		TolerateErrors bool `yaml:"tolerate_errors"`
 	} `yaml:"workload"`
 }
 

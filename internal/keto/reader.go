@@ -9,9 +9,8 @@ import (
 )
 
 type Reader struct {
-	Client          *Keto
-	Name            string
-	Allowed, Denied int
+	Client *Keto
+	Name   string
 }
 
 var _ process.Consumer[*RelationTuple] = &Reader{}
@@ -25,11 +24,9 @@ func (r *Reader) Consume(ctx *stopper.Context, tuple *RelationTuple) error {
 	}
 	if allowed {
 		metrics.MessageCounter.WithLabelValues("keto", "check_permission_allowed", r.Name).Inc()
-		r.Allowed++
 		return nil
 	}
 	metrics.MessageCounter.WithLabelValues("keto", "check_permission_denied", r.Name).Inc()
-	r.Denied++
 	return nil
 }
 

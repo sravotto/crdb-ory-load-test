@@ -9,4 +9,5 @@ docker run -d \
   -p 4466:4466 \
   -p 4467:4467 \
   -e DSN=$DSN \
+  -e LOG_LEVEL=warn \
   oryd/keto 
