@@ -28,6 +28,7 @@ import (
 func main() {
 	scope := flag.String("scope", "hydra", "Scope of Workload Simulation (valid values: hydra, kratos, keto)")
 	duration := flag.Int("duration-sec", 0, "Override duration in seconds")
+	flag.IntVar(duration, "duration", 0, "Override duration in seconds (synonym for -duration-sec)")
 	readRatio := flag.Int("read-ratio", 0, "Override read/write ratio (e.g. 100 = 100:1)")
 	workloadConfig := flag.String("workload-config", "config/config.yaml", "Path to workload config")
 	logFile := flag.String("log-file", "", "Path to log output file")
@@ -45,6 +46,7 @@ Options:
   -scope               Scope of Workload Simulation (valid values: hydra, kratos, keto)
   -checks-per-second   Max permission checks per second (overrides config file)
   -duration-sec        Run for this many seconds (default from config file)
+  -duration            Synonym for -duration-sec
   -read-ratio          Read-to-write ratio (e.g. 100 means 100 reads per 1 write)
   -workload-config     Path to workload config file (default: config/config.yaml)
   -log-file            Path to write logs to (default: stdout only)

@@ -4,6 +4,8 @@ Assuming:
 
 * CRDB running locally, insecure mode.
 
+Create hydra DB.
+
 Run migration script:
 
 ```text
