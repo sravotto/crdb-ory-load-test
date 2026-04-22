@@ -20,12 +20,12 @@ type Client struct {
 	root   string
 }
 
-func New(root string) *Client {
+func New(root string, maxConns int) *Client {
 	transport := &http.Transport{
-		MaxIdleConns:        100,              // Total idle connections
-		MaxIdleConnsPerHost: 100,              // Idle connections per host
-		MaxConnsPerHost:     100,              // Total connections per host
-		IdleConnTimeout:     90 * time.Second, // Timeout for idle connections
+		MaxIdleConns:        maxConns,
+		MaxIdleConnsPerHost: maxConns,
+		MaxConnsPerHost:     maxConns,
+		IdleConnTimeout:     90 * time.Second,
 	}
 	return &Client{
 		client: &http.Client{

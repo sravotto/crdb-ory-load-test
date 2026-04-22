@@ -75,10 +75,10 @@ type Kratos struct {
 
 var _ process.Client[*Identity] = &Kratos{}
 
-func New(config *config.Config) *Kratos {
+func New(cfg *config.Config) *Kratos {
 	return &Kratos{
-		admin:  client.New(config.Kratos.AdminAPI),
-		public: client.New(config.Kratos.PublicAPI),
+		admin:  client.New(cfg.Kratos.AdminAPI, cfg.Readers()),
+		public: client.New(cfg.Kratos.PublicAPI, cfg.Writers()),
 	}
 }
 

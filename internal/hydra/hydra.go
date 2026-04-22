@@ -73,10 +73,10 @@ type Hydra struct {
 
 var _ process.Client[*Credentials] = &Hydra{}
 
-func New(config *config.Config) *Hydra {
+func New(cfg *config.Config) *Hydra {
 	return &Hydra{
-		admin:  client.New(config.Hydra.AdminAPI),
-		public: client.New(config.Hydra.PublicAPI),
+		admin:  client.New(cfg.Hydra.AdminAPI, cfg.Readers()),
+		public: client.New(cfg.Hydra.PublicAPI, cfg.Writers()),
 	}
 }
 

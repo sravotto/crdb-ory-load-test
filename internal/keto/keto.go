@@ -19,10 +19,10 @@ type Keto struct {
 
 var _ process.Client[*RelationTuple] = &Keto{}
 
-func New(config *config.Config) process.Client[*RelationTuple] {
+func New(cfg *config.Config) process.Client[*RelationTuple] {
 	return &Keto{
-		read:  client.New(config.Keto.ReadAPI),
-		write: client.New(config.Keto.WriteAPI),
+		read:  client.New(cfg.Keto.ReadAPI, cfg.Readers()),
+		write: client.New(cfg.Keto.WriteAPI, cfg.Writers()),
 	}
 }
 

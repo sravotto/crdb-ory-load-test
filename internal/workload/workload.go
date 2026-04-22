@@ -27,7 +27,7 @@ func Run[T any](ctx *stopper.Context, cfg *config.Config, client process.Client[
 	}
 
 	var wg sync.WaitGroup
-	messages := make(chan T, 100)
+	messages := make(chan T, cfg.Readers())
 	defer close(messages)
 	readerObs, err := observer.NewObserver(client.String()+"-reads",
 		metrics.OryLatencyHistogram.WithLabelValues(client.String(), "read"),
