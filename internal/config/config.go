@@ -30,6 +30,7 @@ type Config struct {
 		Readers        int  `yaml:"readers"`
 		ReadRatio      int  `yaml:"read_ratio"`
 		DurationSec    int  `yaml:"duration_sec"`
+		MaxRate        int  `yaml:"max_rate"`
 		TolerateErrors bool `yaml:"tolerate_errors"`
 	} `yaml:"workload"`
 }

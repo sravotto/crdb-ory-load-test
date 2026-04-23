@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/field-eng-powertools/stopper"
+	"golang.org/x/time/rate"
 
 	"crdb-ory-load-test/internal/config"
 	"crdb-ory-load-test/internal/metrics"
@@ -14,8 +15,13 @@ import (
 )
 
 func Run[T any](ctx *stopper.Context, cfg *config.Config, client process.Client[T]) error {
-	log.Printf("Load generation for %v with %d writers, %d readers, %d ratio",
-		cfg.Duration(), cfg.Writers(), cfg.Readers(), cfg.Workload.ReadRatio)
+	if cfg.Workload.MaxRate > 0 {
+		log.Printf("Load generation for %v with %d writers, %d readers, %d ratio, %d max ops/sec",
+			cfg.Duration(), cfg.Writers(), cfg.Readers(), cfg.Workload.ReadRatio, cfg.Workload.MaxRate)
+	} else {
+		log.Printf("Load generation for %v with %d writers, %d readers, %d ratio (unlimited rate)",
+			cfg.Duration(), cfg.Writers(), cfg.Readers(), cfg.Workload.ReadRatio)
+	}
 
 	writers, err := client.BuildWriters(ctx, cfg)
 	if err != nil {
@@ -24,6 +30,11 @@ func Run[T any](ctx *stopper.Context, cfg *config.Config, client process.Client[
 	readers, err := client.BuildReaders(ctx, cfg)
 	if err != nil {
 		return err
+	}
+
+	var limiter *rate.Limiter
+	if cfg.Workload.MaxRate > 0 {
+		limiter = rate.NewLimiter(rate.Limit(cfg.Workload.MaxRate), max(1, cfg.Workload.MaxRate))
 	}
 
 	var wg sync.WaitGroup
@@ -41,6 +52,7 @@ func Run[T any](ctx *stopper.Context, cfg *config.Config, client process.Client[
 		Duration:       cfg.Duration(),
 		Repeats:        cfg.Workload.ReadRatio,
 		TolerateErrors: cfg.Workload.TolerateErrors,
+		Limiter:        limiter,
 	}
 	consumerPool.Start(ctx, &wg, messages)
 	writerObs, err := observer.NewObserver(client.String()+"-writes",
@@ -54,6 +66,7 @@ func Run[T any](ctx *stopper.Context, cfg *config.Config, client process.Client[
 		Observer:       writerObs,
 		Duration:       cfg.Duration(),
 		TolerateErrors: cfg.Workload.TolerateErrors,
+		Limiter:        limiter,
 	}
 	start := time.Now()
 	printProgress(ctx, []observer.Observer{readerObs, writerObs})

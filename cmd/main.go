@@ -34,6 +34,7 @@ func main() {
 	logFile := flag.String("log-file", "", "Path to log output file")
 	verbose := flag.Bool("verbose", false, "Enable verbose logging")
 	tolerateErrors := flag.Bool("tolerate-errors", false, "Continue in case of errors")
+	maxRate := flag.Int("max-rate", 0, "Max requests per second across all workers (0 = unlimited)")
 
 	flag.Usage = func() {
 		fmt.Fprintf(flag.CommandLine.Output(), `
@@ -44,7 +45,7 @@ Usage:
 
 Options:
   -scope               Scope of Workload Simulation (valid values: hydra, kratos, keto)
-  -checks-per-second   Max permission checks per second (overrides config file)
+  -max-rate            Max requests per second across all workers (0 = unlimited)
   -duration-sec        Run for this many seconds (default from config file)
   -duration            Synonym for -duration-sec
   -read-ratio          Read-to-write ratio (e.g. 100 means 100 reads per 1 write)
@@ -78,6 +79,9 @@ Options:
 
 	if !*verbose {
 		slog.SetLogLoggerLevel(slog.LevelDebug)
+	}
+	if *maxRate > 0 {
+		config.Workload.MaxRate = *maxRate
 	}
 	config.Workload.TolerateErrors = *tolerateErrors
 	if *logFile != "" {

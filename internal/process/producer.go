@@ -1,12 +1,14 @@
 package process
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/cockroachdb/field-eng-powertools/stopper"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/time/rate"
 )
 
 type Producer[T any] interface {
@@ -19,6 +21,7 @@ type ProducerPool[T any] struct {
 	Observer       prometheus.Observer
 	Duration       time.Duration
 	TolerateErrors bool
+	Limiter        *rate.Limiter
 }
 
 func (p *ProducerPool[T]) Start(ctx *stopper.Context, wg *sync.WaitGroup, data chan<- T) {
@@ -30,7 +33,25 @@ func (p *ProducerPool[T]) Start(ctx *stopper.Context, wg *sync.WaitGroup, data c
 			defer timeout.Stop()
 			delay := time.NewTicker(100 * time.Millisecond)
 			defer delay.Stop()
+
+			// Create a context that cancels when Stopping() fires,
+			// so rate.Limiter.Wait unblocks promptly on shutdown.
+			waitCtx, waitCancel := context.WithCancel(context.Background())
+			go func() {
+				select {
+				case <-ctx.Stopping():
+					waitCancel()
+				case <-waitCtx.Done():
+				}
+			}()
+			defer waitCancel()
+
 			for {
+				if p.Limiter != nil {
+					if err := p.Limiter.Wait(waitCtx); err != nil {
+						return nil
+					}
+				}
 				start := time.Now()
 				item, err := producer.Produce(ctx)
 				if err != nil {

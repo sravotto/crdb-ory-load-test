@@ -1,12 +1,14 @@
 package process
 
 import (
+	"context"
 	"fmt"
 	"sync"
 	"time"
 
 	"github.com/cockroachdb/field-eng-powertools/stopper"
 	"github.com/prometheus/client_golang/prometheus"
+	"golang.org/x/time/rate"
 )
 
 type Consumer[T any] interface {
@@ -20,6 +22,7 @@ type ConsumerPool[T any] struct {
 	Duration       time.Duration
 	Repeats        int
 	TolerateErrors bool
+	Limiter        *rate.Limiter
 }
 
 func (c *ConsumerPool[T]) Start(ctx *stopper.Context, wg *sync.WaitGroup, data <-chan T) {
@@ -30,6 +33,19 @@ func (c *ConsumerPool[T]) Start(ctx *stopper.Context, wg *sync.WaitGroup, data <
 			defer wg.Done()
 			timeout := time.NewTicker(c.Duration)
 			defer timeout.Stop()
+
+			// Create a context that cancels when Stopping() fires,
+			// so rate.Limiter.Wait unblocks promptly on shutdown.
+			waitCtx, waitCancel := context.WithCancel(context.Background())
+			go func() {
+				select {
+				case <-ctx.Stopping():
+					waitCancel()
+				case <-waitCtx.Done():
+				}
+			}()
+			defer waitCancel()
+
 			for {
 				select {
 				case item, ok := <-data:
@@ -37,7 +53,12 @@ func (c *ConsumerPool[T]) Start(ctx *stopper.Context, wg *sync.WaitGroup, data <
 						return nil
 					}
 					start := time.Now()
-					for i := 0; i < c.Repeats; i++ {
+					for range c.Repeats {
+						if c.Limiter != nil {
+							if err := c.Limiter.Wait(waitCtx); err != nil {
+								return nil
+							}
+						}
 						err := consumer.Consume(ctx, item)
 						if err != nil {
 							if c.TolerateErrors {
